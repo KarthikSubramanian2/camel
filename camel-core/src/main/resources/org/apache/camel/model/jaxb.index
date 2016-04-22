@@ -89,6 +89,8 @@ ThrottleDefinition
 ThrowExceptionDefinition
 ToDefinition
 ToDynamicDefinition
+ToServiceDefinition
+ToServiceConfigurationDefinition
 TransactedDefinition
 TransformDefinition
 TryDefinition
