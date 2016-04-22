@@ -661,10 +661,11 @@ public abstract class ProcessorDefinition<Type extends ProcessorDefinition<Type>
      * @return the builder
      */
     @SuppressWarnings("unchecked")
-    public Type toService(String name, String uri) {
+    public Type toService(String name, String uri, ToServiceConfigurationDefinition configuration) {
         ToServiceDefinition answer = new ToServiceDefinition();
         answer.setName(name);
         answer.setUri(uri);
+        answer.setToServiceConfiguration(configuration);
         addOutput(answer);
         return (Type) this;
     }

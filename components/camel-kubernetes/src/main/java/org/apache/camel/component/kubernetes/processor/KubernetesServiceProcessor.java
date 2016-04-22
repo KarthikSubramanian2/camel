@@ -70,10 +70,19 @@ public class KubernetesServiceProcessor extends ServiceSupport implements AsyncP
     public boolean process(Exchange exchange, AsyncCallback callback) {
         // TODO: in try .. catch and the callback stuff
 
-        List<Server> services = discovery.getUpdatedListOfServers();
-        // apply strategy to pick a service
-        if (services.isEmpty()) {
-            exchange.setException(new RejectedExecutionException("No active services with name " + name + " in namespace " + namespace));
+        List<Server> services = null;
+        try {
+            services = discovery.getUpdatedListOfServers();
+            if (services == null || services.isEmpty()) {
+                exchange.setException(new RejectedExecutionException("No active services with name " + name + " in namespace " + namespace));
+            }
+        } catch (Throwable e) {
+            exchange.setException(e);
+        }
+
+        if (exchange.getException() != null) {
+            callback.done(true);
+            return true;
         }
 
         // what strategy to use? random
@@ -113,6 +122,10 @@ public class KubernetesServiceProcessor extends ServiceSupport implements AsyncP
 
     @Override
     protected void doStart() throws Exception {
+        ObjectHelper.notEmpty(name, "name", this);
+        ObjectHelper.notEmpty(namespace, "namespace", this);
+        ObjectHelper.notEmpty(configuration.getMasterUrl(), "masterUrl", this);
+
         discovery = new KubernetesServiceDiscovery(name, namespace, null, createKubernetesClient());
         ServiceHelper.startService(discovery);
     }

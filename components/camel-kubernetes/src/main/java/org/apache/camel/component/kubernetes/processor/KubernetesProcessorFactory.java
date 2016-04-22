@@ -71,6 +71,11 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
             KubernetesConfiguration kc = new KubernetesConfiguration();
             IntrospectionSupport.setProperties(kc, parameters);
 
+            // use namespace from config if not provided
+            if (namespace == null) {
+                namespace = kc.getNamespace();
+            }
+
             return new KubernetesServiceProcessor(name, namespace, uri, mep, kc);
         } else {
             return null;

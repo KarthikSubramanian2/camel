@@ -48,6 +48,7 @@ public class KubernetesServiceDiscovery extends ServiceSupport {
     }
 
     public List<Server> getUpdatedListOfServers() {
+        LOG.debug("Discovering endpoints from namespace: {} with name: {}", namespace, name);
         Endpoints endpoints = client.endpoints().inNamespace(namespace).withName(name).get();
         List<Server> result = new ArrayList<Server>();
         if (endpoints != null) {

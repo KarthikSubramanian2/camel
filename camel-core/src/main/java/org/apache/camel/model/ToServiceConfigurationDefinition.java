@@ -34,6 +34,8 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     @XmlAttribute @Metadata(required = "true")
     private String masterUrl;
     @XmlAttribute
+    private String namespace;
+    @XmlAttribute
     private String apiVersion;
     @XmlAttribute @Metadata(label = "security")
     private String username;
@@ -76,6 +78,14 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
 
     public void setMasterUrl(String masterUrl) {
         this.masterUrl = masterUrl;
+    }
+
+    public String getNamespace() {
+        return namespace;
+    }
+
+    public void setNamespace(String namespace) {
+        this.namespace = namespace;
     }
 
     public String getApiVersion() {
@@ -191,6 +201,14 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
      */
     public ToServiceConfigurationDefinition masterUrl(String masterUrl) {
         setMasterUrl(masterUrl);
+        return this;
+    }
+
+    /**
+     * Sets the namespace to use
+     */
+    public ToServiceConfigurationDefinition namespace(String namespace) {
+        setNamespace(namespace);
         return this;
     }
 
