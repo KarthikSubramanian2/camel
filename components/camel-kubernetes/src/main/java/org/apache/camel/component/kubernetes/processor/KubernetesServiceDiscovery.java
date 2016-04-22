@@ -24,6 +24,7 @@ import io.fabric8.kubernetes.api.model.EndpointPort;
 import io.fabric8.kubernetes.api.model.EndpointSubset;
 import io.fabric8.kubernetes.api.model.Endpoints;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.openshift.client.OpenShiftClient;
 import org.apache.camel.support.ServiceSupport;
 import org.apache.camel.util.IOHelper;
 import org.apache.camel.util.ObjectHelper;
@@ -38,9 +39,9 @@ public class KubernetesServiceDiscovery extends ServiceSupport {
     private String name;
     private String namespace;
     private String portName;
-    private KubernetesClient client;
+    private OpenShiftClient client;
 
-    public KubernetesServiceDiscovery(String name, String namespace, String portName, KubernetesClient client) {
+    public KubernetesServiceDiscovery(String name, String namespace, String portName, OpenShiftClient client) {
         this.name = name;
         this.namespace = namespace;
         this.portName = portName;

@@ -71,6 +71,8 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
             KubernetesConfiguration kc = new KubernetesConfiguration();
             IntrospectionSupport.setProperties(kc, parameters);
 
+            // TODO: allow to specify kubernetes/openshift etc
+
             // use namespace from config if not provided
             if (namespace == null) {
                 namespace = kc.getNamespace();

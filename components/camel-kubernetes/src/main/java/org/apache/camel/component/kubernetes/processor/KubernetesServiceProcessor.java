@@ -22,8 +22,8 @@ import java.util.concurrent.RejectedExecutionException;
 
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.openshift.client.DefaultOpenShiftClient;
+import io.fabric8.openshift.client.OpenShiftClient;
 import org.apache.camel.AsyncCallback;
 import org.apache.camel.AsyncProcessor;
 import org.apache.camel.Exchange;
@@ -135,7 +135,7 @@ public class KubernetesServiceProcessor extends ServiceSupport implements AsyncP
         ServiceHelper.stopService(discovery);
     }
 
-    private KubernetesClient createKubernetesClient() {
+    private OpenShiftClient createKubernetesClient() {
         LOG.debug("Create Kubernetes client with the following Configuration: " + configuration.toString());
 
         ConfigBuilder builder = new ConfigBuilder();
@@ -180,7 +180,7 @@ public class KubernetesServiceProcessor extends ServiceSupport implements AsyncP
         }
 
         Config conf = builder.build();
-        return new DefaultKubernetesClient(conf);
+        return new DefaultOpenShiftClient(conf);
     }
 
 }
