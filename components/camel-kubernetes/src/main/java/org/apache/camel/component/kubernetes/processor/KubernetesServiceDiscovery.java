@@ -5,9 +5,9 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- * <p/>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -56,8 +56,7 @@ public class KubernetesServiceDiscovery extends ServiceSupport {
         List<Server> result = new ArrayList<Server>();
         if (endpoints != null) {
             if (LOG.isDebugEnabled()) {
-                LOG.debug("Found [" + endpoints.getSubsets().size() + "] endpoints in namespace [" +
-                        namespace + "] for name [" + name + "] and portName [" + portName + "]");
+                LOG.debug("Found {} endpoints in namespace: {} for name: {} and portName: {}", endpoints.getSubsets().size(), namespace, name, portName);
             }
             for (EndpointSubset subset : endpoints.getSubsets()) {
                 if (subset.getPorts().size() == 1) {
