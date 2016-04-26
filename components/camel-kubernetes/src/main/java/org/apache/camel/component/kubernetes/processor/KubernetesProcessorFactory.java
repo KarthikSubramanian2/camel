@@ -43,24 +43,25 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Processor createProcessor(RouteContext routeContext, ProcessorDefinition<?> definition) throws Exception {
         if (definition instanceof ServiceCallDefinition) {
-            ServiceCallDefinition ts = (ServiceCallDefinition) definition;
+            ServiceCallDefinition sc = (ServiceCallDefinition) definition;
 
             // discovery must either not be set, or if set then must be us
-            if (ts.getDiscovery() != null && !"kubernetes".equals(ts.getDiscovery())) {
+            if (sc.getDiscovery() != null && !"kubernetes".equals(sc.getDiscovery())) {
                 return null;
             }
 
-            String name = ts.getName();
-            String namespace = ts.getNamespace();
-            String uri = ts.getUri();
-            ExchangePattern mep = ts.getPattern();
+            String name = sc.getName();
+            String namespace = sc.getNamespace();
+            String uri = sc.getUri();
+            ExchangePattern mep = sc.getPattern();
 
-            ServiceCallConfigurationDefinition config = ts.getServiceCallConfiguration();
+            ServiceCallConfigurationDefinition config = sc.getServiceCallConfiguration();
             ServiceCallConfigurationDefinition configRef = null;
-            if (ts.getServiceCallConfigurationRef() != null) {
-                configRef = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ts.getServiceCallConfigurationRef(), ServiceCallConfigurationDefinition.class);
+            if (sc.getServiceCallConfigurationRef() != null) {
+                configRef = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), sc.getServiceCallConfigurationRef(), ServiceCallConfigurationDefinition.class);
             }
 
             // extract the properties from the configuration from the model
@@ -80,16 +81,13 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
                 namespace = kc.getNamespace();
             }
 
-            // lookup the load balancer to use
-            ServiceCallLoadBalancer lb = ts.getLoadBalancer();
-            if (lb == null && ts.getServiceCallConfigurationRef() != null) {
-                lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ts.getLoadBalancerRef(), ServiceCallLoadBalancer.class);
-            }
+            // lookup the load balancer to use (configured on EIP takes precedence vs configured on configuration)
+            ServiceCallLoadBalancer lb = configureLoadBalancer(routeContext, sc);
             if (lb == null && config != null) {
-                lb = config.getLoadBalancer();
+                lb = configureLoadBalancer(routeContext, config);
             }
             if (lb == null && configRef != null) {
-                lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), configRef.getLoadBalancerRef(), ServiceCallLoadBalancer.class);
+                lb = configureLoadBalancer(routeContext, configRef);
             }
 
             KubernetesServiceCallProcessor processor = new KubernetesServiceCallProcessor(name, namespace, uri, mep, kc);
@@ -98,6 +96,43 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
         } else {
             return null;
         }
+    }
+
+    private ServiceCallLoadBalancer configureLoadBalancer(RouteContext routeContext, ServiceCallDefinition sd) {
+        ServiceCallLoadBalancer lb = null;
+
+        if (sd != null) {
+            lb = sd.getLoadBalancer();
+            if (lb == null && sd.getLoadBalancerRef() != null) {
+                String ref = sd.getLoadBalancerRef();
+                // special for ref is referring to built-in
+                if ("random".equalsIgnoreCase(ref)) {
+                    lb = new RandomLoadBalancer();
+                } else if ("roundrobin".equalsIgnoreCase(ref)) {
+                    lb = new RoundRobinBalancer();
+                } else {
+                    lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ref, ServiceCallLoadBalancer.class);
+                }
+            }
+        }
+
+        return lb;
+    }
+
+    private ServiceCallLoadBalancer configureLoadBalancer(RouteContext routeContext, ServiceCallConfigurationDefinition config) {
+        ServiceCallLoadBalancer lb = config.getLoadBalancer();
+        if (lb == null && config.getLoadBalancerRef() != null) {
+            String ref = config.getLoadBalancerRef();
+            // special for ref is referring to built-in
+            if ("random".equalsIgnoreCase(ref)) {
+                lb = new RandomLoadBalancer();
+            } else if ("roundrobin".equalsIgnoreCase(ref)) {
+                lb = new RoundRobinBalancer();
+            } else {
+                lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ref, ServiceCallLoadBalancer.class);
+            }
+        }
+        return lb;
     }
 
 }
