@@ -27,7 +27,7 @@ public interface ServiceCallLoadBalancer<T> {
      * Chooses one of the servers to use using the implemented strategy.
      *
      * @param servers  list of servers
-     * @return the choosen server to use.
+     * @return the chosen server to use.
      */
     T chooseServer(Collection<T> servers);
 
