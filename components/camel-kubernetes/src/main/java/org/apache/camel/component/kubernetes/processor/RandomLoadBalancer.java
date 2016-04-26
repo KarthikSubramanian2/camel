@@ -16,16 +16,25 @@
  */
 package org.apache.camel.component.kubernetes.processor;
 
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 
-public class RandomLoadBalancer implements ServiceCallLoadBalancer {
+import org.apache.camel.spi.ServiceCallLoadBalancer;
+
+public class RandomLoadBalancer implements ServiceCallLoadBalancer<Server> {
 
     @Override
-    public Server choseServer(List<Server> services) {
-        int size = services.size();
+    public Server chooseServer(Collection<Server> servers) {
+        List<Server> list = new ArrayList<>(servers);
+        int size = list.size();
         int ran = new Random().nextInt(size);
-        Server server = services.get(ran);
-        return server;
+        return list.get(ran);
+    }
+
+    @Override
+    public String toString() {
+        return "RandomLoadBalancer";
     }
 }

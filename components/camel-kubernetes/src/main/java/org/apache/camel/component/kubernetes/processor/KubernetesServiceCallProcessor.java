@@ -34,6 +34,7 @@ import org.apache.camel.component.kubernetes.KubernetesConfiguration;
 import org.apache.camel.component.kubernetes.KubernetesConstants;
 import org.apache.camel.processor.SendDynamicProcessor;
 import org.apache.camel.spi.IdAware;
+import org.apache.camel.spi.ServiceCallLoadBalancer;
 import org.apache.camel.support.ServiceSupport;
 import org.apache.camel.util.AsyncProcessorHelper;
 import org.apache.camel.util.ObjectHelper;
@@ -59,7 +60,7 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
     private final KubernetesConfiguration configuration;
     private KubernetesServiceDiscovery discovery;
 
-    private ServiceCallLoadBalancer loadBalancer = new RandomLoadBalancer();
+    private ServiceCallLoadBalancer<Server> loadBalancer;
     private final ServiceCallExpression serviceCallExpression;
     private SendDynamicProcessor processor;
 
@@ -116,7 +117,7 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
         }
 
         // let the client load balancer chose which server to use
-        Server server = loadBalancer.choseServer(servers);
+        Server server = loadBalancer.chooseServer(servers);
         String ip = server.getIp();
         int port = server.getPort();
         LOG.debug("Random selected service {} active at server: {}:{}", name, ip, port);
@@ -154,11 +155,24 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
         return "kubernetes";
     }
 
+    public ServiceCallLoadBalancer<Server> getLoadBalancer() {
+        return loadBalancer;
+    }
+
+    public void setLoadBalancer(ServiceCallLoadBalancer<Server> loadBalancer) {
+        this.loadBalancer = loadBalancer;
+    }
+
     @Override
     protected void doStart() throws Exception {
         ObjectHelper.notEmpty(name, "name", this);
         ObjectHelper.notEmpty(namespace, "namespace", this);
         ObjectHelper.notEmpty(configuration.getMasterUrl(), "masterUrl", this);
+
+        if (loadBalancer == null) {
+            loadBalancer = new RandomLoadBalancer();
+        }
+        LOG.info("KubernetesServiceCall at namespace: {} with service name: {} is using load balancer: {}", namespace, name, loadBalancer);
 
         discovery = new KubernetesServiceDiscovery(name, namespace, null, createKubernetesClient());
         processor = new SendDynamicProcessor(uri, serviceCallExpression);

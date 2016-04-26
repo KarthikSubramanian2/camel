@@ -16,7 +16,10 @@
  */
 package org.apache.camel.component.kubernetes.processor;
 
-public class Server {
+/**
+ * Represents a model of a kubernetes server.
+ */
+public final class Server {
 
     private final String ip;
     private final int port;

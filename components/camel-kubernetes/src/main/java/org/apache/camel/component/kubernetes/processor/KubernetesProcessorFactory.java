@@ -27,6 +27,7 @@ import org.apache.camel.model.ServiceCallConfigurationDefinition;
 import org.apache.camel.model.ServiceCallDefinition;
 import org.apache.camel.spi.ProcessorFactory;
 import org.apache.camel.spi.RouteContext;
+import org.apache.camel.spi.ServiceCallLoadBalancer;
 import org.apache.camel.util.CamelContextHelper;
 import org.apache.camel.util.IntrospectionSupport;
 
@@ -79,7 +80,21 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
                 namespace = kc.getNamespace();
             }
 
-            return new KubernetesServiceCallProcessor(name, namespace, uri, mep, kc);
+            // lookup the load balancer to use
+            ServiceCallLoadBalancer lb = ts.getLoadBalancer();
+            if (lb == null && ts.getServiceCallConfigurationRef() != null) {
+                lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ts.getLoadBalancerRef(), ServiceCallLoadBalancer.class);
+            }
+            if (lb == null && config != null) {
+                lb = config.getLoadBalancer();
+            }
+            if (lb == null && configRef != null) {
+                lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), configRef.getLoadBalancerRef(), ServiceCallLoadBalancer.class);
+            }
+
+            KubernetesServiceCallProcessor processor = new KubernetesServiceCallProcessor(name, namespace, uri, mep, kc);
+            processor.setLoadBalancer(lb);
+            return processor;
         } else {
             return null;
         }

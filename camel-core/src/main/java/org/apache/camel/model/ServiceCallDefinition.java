@@ -21,18 +21,18 @@ import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
+import javax.xml.bind.annotation.XmlTransient;
 
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.Processor;
 import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.RouteContext;
+import org.apache.camel.spi.ServiceCallLoadBalancer;
 
 @Metadata(label = "eip,routing")
 @XmlRootElement(name = "serviceCall")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinition> {
-
-    // TODO: load balancing strategy
 
     @XmlElement
     private ServiceCallConfigurationDefinition serviceCallConfiguration;
@@ -48,15 +48,13 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
     private String discovery;
     @XmlAttribute
     private String serviceCallConfigurationRef;
+    @XmlAttribute
+    private String loadBalancerRef;
+    @XmlTransient
+    private ServiceCallLoadBalancer loadBalancer;
 
     public ServiceCallDefinition() {
     }
-
-    // serviceCall("myService") (will use http by default)
-    // serviceCall("myService/foo") (will use http by default)
-    // serviceCall("http:myService/foo")
-    // serviceCall("myService", "http:myService.host:myService.port/foo")
-    // serviceCall("myService", "netty4:tcp:myService?connectTimeout=1000")
 
     @Override
     public String toString() {
@@ -136,6 +134,22 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
         return this;
     }
 
+    /**
+     * Sets a reference to a custom {@link org.apache.camel.spi.ServiceCallLoadBalancer} to use.
+     */
+    public ServiceCallDefinition loadBalancer(String loadBalancerRef) {
+        setLoadBalancerRef(loadBalancerRef);
+        return this;
+    }
+
+    /**
+     * Sets a custom {@link org.apache.camel.spi.ServiceCallLoadBalancer} to use.
+     */
+    public ServiceCallDefinition loadBalancer(ServiceCallLoadBalancer loadBalancer) {
+        setLoadBalancer(loadBalancer);
+        return this;
+    }
+
     // Properties
     // -------------------------------------------------------------------------
 
@@ -197,5 +211,21 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
      */
     public void setUri(String uri) {
         this.uri = uri;
+    }
+
+    public String getLoadBalancerRef() {
+        return loadBalancerRef;
+    }
+
+    public void setLoadBalancerRef(String loadBalancerRef) {
+        this.loadBalancerRef = loadBalancerRef;
+    }
+
+    public ServiceCallLoadBalancer getLoadBalancer() {
+        return loadBalancer;
+    }
+
+    public void setLoadBalancer(ServiceCallLoadBalancer loadBalancer) {
+        this.loadBalancer = loadBalancer;
     }
 }

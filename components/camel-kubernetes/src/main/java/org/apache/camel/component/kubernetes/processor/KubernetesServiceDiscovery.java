@@ -31,7 +31,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Discovers services in Kubernetes.
+ * Discovers where services in Kubernetes are running on which servers.
  */
 public class KubernetesServiceDiscovery extends ServiceSupport {
 

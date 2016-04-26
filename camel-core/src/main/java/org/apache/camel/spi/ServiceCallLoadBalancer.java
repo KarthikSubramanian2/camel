@@ -14,12 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.kubernetes.processor;
+package org.apache.camel.spi;
 
-import java.util.List;
+import java.util.Collection;
 
-public interface ServiceCallLoadBalancer {
+/**
+ * Allows SPIs to implement custom load balacing strategies for the Service Call EIP.
+ */
+public interface ServiceCallLoadBalancer<T> {
 
-    Server choseServer(List<Server> services);
+    /**
+     * Chooses one of the servers to use using the implemented strategy.
+     *
+     * @param servers  list of servers
+     * @return the choosen server to use.
+     */
+    T chooseServer(Collection<T> servers);
 
 }

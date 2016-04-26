@@ -23,6 +23,7 @@ import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
 import org.apache.camel.spi.Metadata;
+import org.apache.camel.spi.ServiceCallLoadBalancer;
 
 @Metadata(label = "eip,routing")
 @XmlRootElement(name = "toServiceConfiguration")
@@ -61,6 +62,10 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
     private String clientKeyPassphrase;
     @XmlAttribute @Metadata(label = "security")
     private Boolean trustCerts;
+    @XmlAttribute
+    private String loadBalancerRef;
+    @XmlTransient
+    private ServiceCallLoadBalancer loadBalancer;
 
     public ServiceCallConfigurationDefinition() {
     }
@@ -192,6 +197,21 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
         this.trustCerts = trustCerts;
     }
 
+    public String getLoadBalancerRef() {
+        return loadBalancerRef;
+    }
+
+    public void setLoadBalancerRef(String loadBalancerRef) {
+        this.loadBalancerRef = loadBalancerRef;
+    }
+
+    public ServiceCallLoadBalancer getLoadBalancer() {
+        return loadBalancer;
+    }
+
+    public void setLoadBalancer(ServiceCallLoadBalancer loadBalancer) {
+        this.loadBalancer = loadBalancer;
+    }
 
     // Fluent API
     // -------------------------------------------------------------------------
@@ -313,6 +333,22 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
      */
     public ServiceCallConfigurationDefinition trustCerts(boolean trustCerts) {
         setTrustCerts(trustCerts);
+        return this;
+    }
+
+    /**
+     * Sets a reference to a custom {@link org.apache.camel.spi.ServiceCallLoadBalancer} to use.
+     */
+    public ServiceCallConfigurationDefinition loadBalancer(String loadBalancerRef) {
+        setLoadBalancerRef(loadBalancerRef);
+        return this;
+    }
+
+    /**
+     * Sets a custom {@link org.apache.camel.spi.ServiceCallLoadBalancer} to use.
+     */
+    public ServiceCallConfigurationDefinition loadBalancer(ServiceCallLoadBalancer loadBalancer) {
+        setLoadBalancer(loadBalancer);
         return this;
     }
 
