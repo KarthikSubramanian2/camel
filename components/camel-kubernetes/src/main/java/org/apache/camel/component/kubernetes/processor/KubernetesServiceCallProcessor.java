@@ -17,7 +17,6 @@
 package org.apache.camel.component.kubernetes.processor;
 
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.RejectedExecutionException;
 
 import io.fabric8.kubernetes.client.Config;
@@ -38,9 +37,12 @@ import org.apache.camel.util.ServiceHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class KubernetesServiceProcessor extends ServiceSupport implements AsyncProcessor, Traceable, IdAware {
+/**
+ * Kubernetes based implementation of the the ServiceCall EIP.
+ */
+public class KubernetesServiceCallProcessor extends ServiceSupport implements AsyncProcessor, Traceable, IdAware {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KubernetesServiceProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(KubernetesServiceCallProcessor.class);
 
     private String id;
     private final String name;
@@ -50,10 +52,11 @@ public class KubernetesServiceProcessor extends ServiceSupport implements AsyncP
     private final KubernetesConfiguration configuration;
 
     private KubernetesServiceDiscovery discovery;
+    private ServiceCallLoadBalancer loadBalancer = new RandomLoadBalancer();
 
     // TODO: allow to plugin custom load balancer like ribbon
 
-    public KubernetesServiceProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, KubernetesConfiguration configuration) {
+    public KubernetesServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, KubernetesConfiguration configuration) {
         this.name = name;
         this.namespace = namespace;
         this.uri = uri;
@@ -68,12 +71,10 @@ public class KubernetesServiceProcessor extends ServiceSupport implements AsyncP
 
     @Override
     public boolean process(Exchange exchange, AsyncCallback callback) {
-        // TODO: in try .. catch and the callback stuff
-
-        List<Server> services = null;
+        List<Server> servers = null;
         try {
-            services = discovery.getUpdatedListOfServers();
-            if (services == null || services.isEmpty()) {
+            servers = discovery.getUpdatedListOfServers();
+            if (servers == null || servers.isEmpty()) {
                 exchange.setException(new RejectedExecutionException("No active services with name " + name + " in namespace " + namespace));
             }
         } catch (Throwable e) {
@@ -85,21 +86,14 @@ public class KubernetesServiceProcessor extends ServiceSupport implements AsyncP
             return true;
         }
 
-        // what strategy to use? random
-        int size = services.size();
-        int ran = new Random().nextInt(size);
-        Server server = services.get(ran);
-
+        // let the client load balancer chose which server to use
+        Server server = loadBalancer.choseServer(servers);
         String ip = server.getIp();
         int port = server.getPort();
-
-        LOG.debug("Random selected service {} active at: {}:{}", name, ip, port);
+        LOG.debug("Random selected service {} active at server: {}:{}", name, ip, port);
 
         // build uri based on the name
 
-
-        // TODO: lookup service
-        // TODO: apply LB strategy
         // TODO build uri
         callback.done(true);
         return true;

@@ -30,6 +30,9 @@ import org.apache.camel.spi.RouteContext;
 import org.apache.camel.util.CamelContextHelper;
 import org.apache.camel.util.IntrospectionSupport;
 
+/**
+ * {@link ProcessorFactory} that creates the Kubernetes implementation of the ServiceCall EIP.
+ */
 public class KubernetesProcessorFactory implements ProcessorFactory {
 
     @Override
@@ -71,14 +74,12 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
             KubernetesConfiguration kc = new KubernetesConfiguration();
             IntrospectionSupport.setProperties(kc, parameters);
 
-            // TODO: allow to specify kubernetes/openshift etc
-
             // use namespace from config if not provided
             if (namespace == null) {
                 namespace = kc.getNamespace();
             }
 
-            return new KubernetesServiceProcessor(name, namespace, uri, mep, kc);
+            return new KubernetesServiceCallProcessor(name, namespace, uri, mep, kc);
         } else {
             return null;
         }

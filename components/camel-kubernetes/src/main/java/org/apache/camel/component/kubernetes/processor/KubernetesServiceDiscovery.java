@@ -30,6 +30,9 @@ import org.apache.camel.util.ObjectHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Discovers services in Kubernetes.
+ */
 public class KubernetesServiceDiscovery extends ServiceSupport {
 
     private static final Logger LOG = LoggerFactory.getLogger(KubernetesServiceDiscovery.class);
