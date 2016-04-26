@@ -25,10 +25,14 @@ import io.fabric8.openshift.client.DefaultOpenShiftClient;
 import io.fabric8.openshift.client.OpenShiftClient;
 import org.apache.camel.AsyncCallback;
 import org.apache.camel.AsyncProcessor;
+import org.apache.camel.CamelContext;
+import org.apache.camel.CamelContextAware;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.Traceable;
 import org.apache.camel.component.kubernetes.KubernetesConfiguration;
+import org.apache.camel.component.kubernetes.KubernetesConstants;
+import org.apache.camel.processor.SendDynamicProcessor;
 import org.apache.camel.spi.IdAware;
 import org.apache.camel.support.ServiceSupport;
 import org.apache.camel.util.AsyncProcessorHelper;
@@ -40,28 +44,53 @@ import org.slf4j.LoggerFactory;
 /**
  * Kubernetes based implementation of the the ServiceCall EIP.
  */
-public class KubernetesServiceCallProcessor extends ServiceSupport implements AsyncProcessor, Traceable, IdAware {
+public class KubernetesServiceCallProcessor extends ServiceSupport implements AsyncProcessor, CamelContextAware, Traceable, IdAware {
 
     private static final Logger LOG = LoggerFactory.getLogger(KubernetesServiceCallProcessor.class);
 
+    private CamelContext camelContext;
     private String id;
     private final String name;
+    private final String scheme;
+    private final String contextPath;
     private final String namespace;
     private final String uri;
     private final ExchangePattern exchangePattern;
     private final KubernetesConfiguration configuration;
-
     private KubernetesServiceDiscovery discovery;
+
     private ServiceCallLoadBalancer loadBalancer = new RandomLoadBalancer();
+    private final ServiceCallExpression serviceCallExpression;
+    private SendDynamicProcessor processor;
 
     // TODO: allow to plugin custom load balancer like ribbon
 
     public KubernetesServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, KubernetesConfiguration configuration) {
-        this.name = name;
+        // setup from the provided name which can contain scheme and context-path information as well
+        String serviceName;
+        if (name.contains("/")) {
+            serviceName = ObjectHelper.before(name, "/");
+            this.contextPath = ObjectHelper.after(name, "/");
+        } else if (name.contains("?")) {
+            serviceName = ObjectHelper.before(name, "?");
+            this.contextPath = ObjectHelper.after(name, "?");
+        } else {
+            serviceName = name;
+            this.contextPath = null;
+        }
+        if (serviceName.contains(":")) {
+            this.scheme = ObjectHelper.before(serviceName, ":");
+            this.name = ObjectHelper.after(serviceName, ":");
+        } else {
+            this.scheme = null;
+            this.name = serviceName;
+        }
+
         this.namespace = namespace;
         this.uri = uri;
         this.exchangePattern = exchangePattern;
         this.configuration = configuration;
+        this.serviceCallExpression = new ServiceCallExpression(this.name, this.scheme, this.contextPath, this.uri);
     }
 
     @Override
@@ -92,11 +121,22 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
         int port = server.getPort();
         LOG.debug("Random selected service {} active at server: {}:{}", name, ip, port);
 
-        // build uri based on the name
+        // set selected server as header
+        exchange.getIn().setHeader(KubernetesConstants.KUBERNETES_SERVER_IP, ip);
+        exchange.getIn().setHeader(KubernetesConstants.KUBERNETES_SERVER_PORT, port);
 
-        // TODO build uri
-        callback.done(true);
-        return true;
+        // use the dynamic send processor to call the service
+        return processor.process(exchange, callback);
+    }
+
+    @Override
+    public CamelContext getCamelContext() {
+        return camelContext;
+    }
+
+    @Override
+    public void setCamelContext(CamelContext camelContext) {
+        this.camelContext = camelContext;
     }
 
     @Override
@@ -121,12 +161,17 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
         ObjectHelper.notEmpty(configuration.getMasterUrl(), "masterUrl", this);
 
         discovery = new KubernetesServiceDiscovery(name, namespace, null, createKubernetesClient());
-        ServiceHelper.startService(discovery);
+        processor = new SendDynamicProcessor(uri, serviceCallExpression);
+        processor.setCamelContext(getCamelContext());
+        if (exchangePattern != null) {
+            processor.setPattern(exchangePattern);
+        }
+        ServiceHelper.startServices(discovery, processor);
     }
 
     @Override
     protected void doStop() throws Exception {
-        ServiceHelper.stopService(discovery);
+        ServiceHelper.stopServices(processor, discovery);
     }
 
     private OpenShiftClient createKubernetesClient() {
