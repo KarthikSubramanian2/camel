@@ -27,10 +27,10 @@ import org.apache.camel.spi.Metadata;
 @Metadata(label = "eip,routing")
 @XmlRootElement(name = "toServiceConfiguration")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class ToServiceConfigurationDefinition extends IdentifiedType {
+public class ServiceCallConfigurationDefinition extends IdentifiedType {
 
     @XmlTransient
-    private ToServiceDefinition parent;
+    private ServiceCallDefinition parent;
     @XmlAttribute @Metadata(required = "true")
     private String masterUrl;
     @XmlAttribute
@@ -62,10 +62,10 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     @XmlAttribute @Metadata(label = "security")
     private Boolean trustCerts;
 
-    public ToServiceConfigurationDefinition() {
+    public ServiceCallConfigurationDefinition() {
     }
 
-    public ToServiceConfigurationDefinition(ToServiceDefinition parent) {
+    public ServiceCallConfigurationDefinition(ServiceCallDefinition parent) {
         this.parent = parent;
     }
 
@@ -199,7 +199,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the URL to the master
      */
-    public ToServiceConfigurationDefinition masterUrl(String masterUrl) {
+    public ServiceCallConfigurationDefinition masterUrl(String masterUrl) {
         setMasterUrl(masterUrl);
         return this;
     }
@@ -207,7 +207,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the namespace to use
      */
-    public ToServiceConfigurationDefinition namespace(String namespace) {
+    public ServiceCallConfigurationDefinition namespace(String namespace) {
         setNamespace(namespace);
         return this;
     }
@@ -215,7 +215,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the API version
      */
-    public ToServiceConfigurationDefinition apiVersion(String apiVersion) {
+    public ServiceCallConfigurationDefinition apiVersion(String apiVersion) {
         setApiVersion(apiVersion);
         return this;
     }
@@ -223,7 +223,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the username for authentication
      */
-    public ToServiceConfigurationDefinition username(String username) {
+    public ServiceCallConfigurationDefinition username(String username) {
         setUsername(username);
         return this;
     }
@@ -231,7 +231,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the password for authentication
      */
-    public ToServiceConfigurationDefinition password(String password) {
+    public ServiceCallConfigurationDefinition password(String password) {
         setPassword(password);
         return this;
     }
@@ -239,7 +239,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the OAUTH token for authentication (instead of username/password)
      */
-    public ToServiceConfigurationDefinition oauthToken(String oauthToken) {
+    public ServiceCallConfigurationDefinition oauthToken(String oauthToken) {
         setOauthToken(oauthToken);
         return this;
     }
@@ -247,7 +247,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the Certificate Authority data
      */
-    public ToServiceConfigurationDefinition caCertData(String caCertData) {
+    public ServiceCallConfigurationDefinition caCertData(String caCertData) {
         setCaCertData(caCertData);
         return this;
     }
@@ -255,7 +255,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the Certificate Authority data that are loaded from the file
      */
-    public ToServiceConfigurationDefinition caCertFile(String caCertFile) {
+    public ServiceCallConfigurationDefinition caCertFile(String caCertFile) {
         setCaCertFile(caCertFile);
         return this;
     }
@@ -263,7 +263,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the Client Certificate data
      */
-    public ToServiceConfigurationDefinition clientCertData(String clientCertData) {
+    public ServiceCallConfigurationDefinition clientCertData(String clientCertData) {
         setClientCertData(clientCertData);
         return this;
     }
@@ -271,7 +271,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the Client Certificate data that are loaded from the file
      */
-    public ToServiceConfigurationDefinition clientCertFile(String clientCertFile) {
+    public ServiceCallConfigurationDefinition clientCertFile(String clientCertFile) {
         setClientCertFile(clientCertFile);
         return this;
     }
@@ -279,7 +279,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the Client Keystore algorithm, such as RSA.
      */
-    public ToServiceConfigurationDefinition clientKeyAlgo(String clientKeyAlgo) {
+    public ServiceCallConfigurationDefinition clientKeyAlgo(String clientKeyAlgo) {
         setClientKeyAlgo(clientKeyAlgo);
         return this;
     }
@@ -287,7 +287,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the Client Keystore data
      */
-    public ToServiceConfigurationDefinition clientKeyData(String clientKeyData) {
+    public ServiceCallConfigurationDefinition clientKeyData(String clientKeyData) {
         setClientKeyData(clientKeyData);
         return this;
     }
@@ -295,7 +295,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the Client Keystore data that are loaded from the file
      */
-    public ToServiceConfigurationDefinition clientKeyFile(String clientKeyFile) {
+    public ServiceCallConfigurationDefinition clientKeyFile(String clientKeyFile) {
         setClientKeyFile(clientKeyFile);
         return this;
     }
@@ -303,7 +303,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets the Client Keystore passphrase
      */
-    public ToServiceConfigurationDefinition clientKeyPassphrase(String clientKeyPassphrase) {
+    public ServiceCallConfigurationDefinition clientKeyPassphrase(String clientKeyPassphrase) {
         setClientKeyPassphrase(clientKeyPassphrase);
         return this;
     }
@@ -311,7 +311,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * Sets whether to turn on trust certificate check
      */
-    public ToServiceConfigurationDefinition trustCerts(boolean trustCerts) {
+    public ServiceCallConfigurationDefinition trustCerts(boolean trustCerts) {
         setTrustCerts(trustCerts);
         return this;
     }
@@ -319,7 +319,7 @@ public class ToServiceConfigurationDefinition extends IdentifiedType {
     /**
      * End of configuration
      */
-    public ToServiceDefinition end() {
+    public ServiceCallDefinition end() {
         return parent;
     }
 

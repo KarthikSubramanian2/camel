@@ -23,8 +23,8 @@ import org.apache.camel.ExchangePattern;
 import org.apache.camel.Processor;
 import org.apache.camel.component.kubernetes.KubernetesConfiguration;
 import org.apache.camel.model.ProcessorDefinition;
-import org.apache.camel.model.ToServiceConfigurationDefinition;
-import org.apache.camel.model.ToServiceDefinition;
+import org.apache.camel.model.ServiceCallConfigurationDefinition;
+import org.apache.camel.model.ServiceCallDefinition;
 import org.apache.camel.spi.ProcessorFactory;
 import org.apache.camel.spi.RouteContext;
 import org.apache.camel.util.CamelContextHelper;
@@ -40,8 +40,8 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
 
     @Override
     public Processor createProcessor(RouteContext routeContext, ProcessorDefinition<?> definition) throws Exception {
-        if (definition instanceof ToServiceDefinition) {
-            ToServiceDefinition ts = (ToServiceDefinition) definition;
+        if (definition instanceof ServiceCallDefinition) {
+            ServiceCallDefinition ts = (ServiceCallDefinition) definition;
 
             // discovery must either not be set, or if set then must be us
             if (ts.getDiscovery() != null && !"kubernetes".equals(ts.getDiscovery())) {
@@ -53,10 +53,10 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
             String uri = ts.getUri();
             ExchangePattern mep = ts.getPattern();
 
-            ToServiceConfigurationDefinition config = ts.getToServiceConfiguration();
-            ToServiceConfigurationDefinition configRef = null;
-            if (ts.getToServiceConfigurationRef() != null) {
-                configRef = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ts.getToServiceConfigurationRef(), ToServiceConfigurationDefinition.class);
+            ServiceCallConfigurationDefinition config = ts.getServiceCallConfiguration();
+            ServiceCallConfigurationDefinition configRef = null;
+            if (ts.getServiceCallConfigurationRef() != null) {
+                configRef = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ts.getServiceCallConfigurationRef(), ServiceCallConfigurationDefinition.class);
             }
 
             // extract the properties from the configuration from the model

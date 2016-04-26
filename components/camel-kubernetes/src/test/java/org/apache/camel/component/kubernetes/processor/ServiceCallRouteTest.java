@@ -18,14 +18,14 @@ package org.apache.camel.component.kubernetes.processor;
 
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.model.ToServiceConfigurationDefinition;
+import org.apache.camel.model.ServiceCallConfigurationDefinition;
 import org.apache.camel.test.junit4.CamelTestSupport;
 import org.junit.Test;
 
-public class ToServiceRouteTest extends CamelTestSupport {
+public class ServiceCallRouteTest extends CamelTestSupport {
 
     @Test
-    public void testToService() throws Exception {
+    public void testServiceCall() throws Exception {
         getMockEndpoint("mock:result").expectedMessageCount(1);
 
         template.sendBody("direct:start", "Hello World");
@@ -38,7 +38,7 @@ public class ToServiceRouteTest extends CamelTestSupport {
         return new RouteBuilder() {
             @Override
             public void configure() throws Exception {
-                ToServiceConfigurationDefinition config = new ToServiceConfigurationDefinition();
+                ServiceCallConfigurationDefinition config = new ServiceCallConfigurationDefinition();
                 config.setMasterUrl("https://fabric8-master.vagrant.f8:8443");
                 config.setUsername("admin");
                 config.setPassword("admin");
@@ -46,7 +46,7 @@ public class ToServiceRouteTest extends CamelTestSupport {
                 config.setNamespace("default");
 
                 from("direct:start")
-                    .toService("cdi-camel-jetty", "http:cdi-camel-jetty", config)
+                    .serviceCall("cdi-camel-jetty", "http:cdi-camel-jetty", config)
                     .to("mock:result");
             }
         };

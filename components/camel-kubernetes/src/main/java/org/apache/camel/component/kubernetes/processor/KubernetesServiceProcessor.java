@@ -136,6 +136,7 @@ public class KubernetesServiceProcessor extends ServiceSupport implements AsyncP
     }
 
     private OpenShiftClient createKubernetesClient() {
+        // TODO: need to use OpenShiftClient until fabric8-client can auto detect OS vs Kube environment
         LOG.debug("Create Kubernetes client with the following Configuration: " + configuration.toString());
 
         ConfigBuilder builder = new ConfigBuilder();

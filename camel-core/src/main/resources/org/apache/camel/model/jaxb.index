@@ -74,6 +74,8 @@ RoutesDefinition
 RoutingSlipDefinition
 SamplingDefinition
 ScriptDefinition
+ServiceCallDefinition
+ServiceCallConfigurationDefinition
 SetBodyDefinition
 SetExchangePatternDefinition
 SetFaultBodyDefinition
@@ -89,8 +91,6 @@ ThrottleDefinition
 ThrowExceptionDefinition
 ToDefinition
 ToDynamicDefinition
-ToServiceDefinition
-ToServiceConfigurationDefinition
 TransactedDefinition
 TransformDefinition
 TryDefinition

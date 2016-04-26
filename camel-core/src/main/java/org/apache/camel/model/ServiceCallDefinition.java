@@ -28,14 +28,14 @@ import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.RouteContext;
 
 @Metadata(label = "eip,routing")
-@XmlRootElement(name = "toService")
+@XmlRootElement(name = "serviceCall")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class ToServiceDefinition extends NoOutputDefinition<ToServiceDefinition> {
+public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinition> {
 
     // TODO: load balancing strategy
 
     @XmlElement
-    private ToServiceConfigurationDefinition toServiceConfiguration;
+    private ServiceCallConfigurationDefinition serviceCallConfiguration;
     @XmlAttribute @Metadata(required = "true")
     private String uri;
     @XmlAttribute
@@ -47,25 +47,25 @@ public class ToServiceDefinition extends NoOutputDefinition<ToServiceDefinition>
     @XmlAttribute
     private String discovery;
     @XmlAttribute
-    private String toServiceConfigurationRef;
+    private String serviceCallConfigurationRef;
 
-    public ToServiceDefinition() {
+    public ServiceCallDefinition() {
     }
 
-    // toService("myService") (will use http by default)
-    // toService("myService/foo") (will use http by default)
-    // toService("http:myService/foo")
-    // toService("myService", "http:myService.host:myService.port/foo")
-    // toService("myService", "netty4:tcp:myService?connectTimeout=1000")
+    // serviceCall("myService") (will use http by default)
+    // serviceCall("myService/foo") (will use http by default)
+    // serviceCall("http:myService/foo")
+    // serviceCall("myService", "http:myService.host:myService.port/foo")
+    // serviceCall("myService", "netty4:tcp:myService?connectTimeout=1000")
 
     @Override
     public String toString() {
-        return "ToService[" + name + "]";
+        return "ServiceCall[" + name + "]";
     }
 
     @Override
     public String getLabel() {
-        return "toService";
+        return "serviceCall";
     }
 
     @Override
@@ -83,7 +83,7 @@ public class ToServiceDefinition extends NoOutputDefinition<ToServiceDefinition>
     /**
      * Sets the optional {@link ExchangePattern} used to invoke this endpoint
      */
-    public ToServiceDefinition pattern(ExchangePattern pattern) {
+    public ServiceCallDefinition pattern(ExchangePattern pattern) {
         setPattern(pattern);
         return this;
     }
@@ -91,7 +91,7 @@ public class ToServiceDefinition extends NoOutputDefinition<ToServiceDefinition>
     /**
      * Sets the namespace of the service to use
      */
-    public ToServiceDefinition namespace(String namespace) {
+    public ServiceCallDefinition namespace(String namespace) {
         setNamespace(namespace);
         return this;
     }
@@ -99,7 +99,7 @@ public class ToServiceDefinition extends NoOutputDefinition<ToServiceDefinition>
     /**
      * Sets the name of the service to use
      */
-    public ToServiceDefinition name(String name) {
+    public ServiceCallDefinition name(String name) {
         setName(name);
         return this;
     }
@@ -110,29 +110,29 @@ public class ToServiceDefinition extends NoOutputDefinition<ToServiceDefinition>
      * Use kubernetes to use kubernetes.
      * Use ribbon to use ribbon.
      */
-    public ToServiceDefinition discovery(String discovery) {
+    public ServiceCallDefinition discovery(String discovery) {
         setDiscovery(discovery);
         return this;
     }
 
-    public ToServiceConfigurationDefinition toServiceConfiguration() {
-        toServiceConfiguration = new ToServiceConfigurationDefinition(this);
-        return toServiceConfiguration;
+    public ServiceCallConfigurationDefinition serviceCallConfiguration() {
+        serviceCallConfiguration = new ServiceCallConfigurationDefinition(this);
+        return serviceCallConfiguration;
     }
 
     /**
-     * Configures the Hystrix EIP using the given configuration
+     * Configures the ServiceCall using the given configuration
      */
-    public ToServiceDefinition toServiceConfiguration(ToServiceConfigurationDefinition configuration) {
-        toServiceConfiguration = configuration;
+    public ServiceCallDefinition serviceCallConfiguration(ServiceCallConfigurationDefinition configuration) {
+        serviceCallConfiguration = configuration;
         return this;
     }
 
     /**
-     * Refers to a Hystrix configuration to use for configuring the Hystrix EIP.
+     * Refers to a ServiceCall configuration to use
      */
-    public ToServiceDefinition toServiceConfiguration(String ref) {
-        toServiceConfigurationRef = ref;
+    public ServiceCallDefinition serviceCallConfiguration(String ref) {
+        serviceCallConfigurationRef = ref;
         return this;
     }
 
@@ -171,20 +171,20 @@ public class ToServiceDefinition extends NoOutputDefinition<ToServiceDefinition>
         this.discovery = discovery;
     }
 
-    public ToServiceConfigurationDefinition getToServiceConfiguration() {
-        return toServiceConfiguration;
+    public ServiceCallConfigurationDefinition getServiceCallConfiguration() {
+        return serviceCallConfiguration;
     }
 
-    public void setToServiceConfiguration(ToServiceConfigurationDefinition toServiceConfiguration) {
-        this.toServiceConfiguration = toServiceConfiguration;
+    public void setServiceCallConfiguration(ServiceCallConfigurationDefinition serviceCallConfiguration) {
+        this.serviceCallConfiguration = serviceCallConfiguration;
     }
 
-    public String getToServiceConfigurationRef() {
-        return toServiceConfigurationRef;
+    public String getServiceCallConfigurationRef() {
+        return serviceCallConfigurationRef;
     }
 
-    public void setToServiceConfigurationRef(String toServiceConfigurationRef) {
-        this.toServiceConfigurationRef = toServiceConfigurationRef;
+    public void setServiceCallConfigurationRef(String serviceCallConfigurationRef) {
+        this.serviceCallConfigurationRef = serviceCallConfigurationRef;
     }
 
     public String getUri() {

@@ -654,18 +654,18 @@ public abstract class ProcessorDefinition<Type extends ProcessorDefinition<Type>
     }
 
     /**
-     * Sends the exchange to the given service
+     * Calls the service
      *
      * @param name the service name
      * @param uri  the endpoint uri to use for calling the service
      * @return the builder
      */
     @SuppressWarnings("unchecked")
-    public Type toService(String name, String uri, ToServiceConfigurationDefinition configuration) {
-        ToServiceDefinition answer = new ToServiceDefinition();
+    public Type serviceCall(String name, String uri, ServiceCallConfigurationDefinition configuration) {
+        ServiceCallDefinition answer = new ServiceCallDefinition();
         answer.setName(name);
         answer.setUri(uri);
-        answer.setToServiceConfiguration(configuration);
+        answer.setServiceCallConfiguration(configuration);
         addOutput(answer);
         return (Type) this;
     }
