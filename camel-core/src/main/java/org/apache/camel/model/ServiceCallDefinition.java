@@ -28,6 +28,7 @@ import org.apache.camel.Processor;
 import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.RouteContext;
 import org.apache.camel.spi.ServiceCallLoadBalancer;
+import org.apache.camel.spi.ServiceCallServerListStrategy;
 
 @Metadata(label = "eip,routing")
 @XmlRootElement(name = "serviceCall")
@@ -52,6 +53,10 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
     private String loadBalancerRef;
     @XmlTransient
     private ServiceCallLoadBalancer loadBalancer;
+    @XmlAttribute
+    private String serverListStrategyRef;
+    @XmlTransient
+    private ServiceCallServerListStrategy serverListStrategy;
 
     public ServiceCallDefinition() {
     }
@@ -150,6 +155,22 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
         return this;
     }
 
+    /**
+     * Sets a reference to a custom {@link org.apache.camel.spi.ServiceCallServerListStrategy} to use.
+     */
+    public ServiceCallDefinition serverListStrategy(String serverListStrategyRef) {
+        setServerListStrategyRef(serverListStrategyRef);
+        return this;
+    }
+
+    /**
+     * Sets a custom {@link org.apache.camel.spi.ServiceCallServerListStrategy} to use.
+     */
+    public ServiceCallDefinition serverListStrategy(ServiceCallServerListStrategy serverListStrategy) {
+        setServerListStrategy(serverListStrategy);
+        return this;
+    }
+
     // Properties
     // -------------------------------------------------------------------------
 
@@ -227,5 +248,21 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
 
     public void setLoadBalancer(ServiceCallLoadBalancer loadBalancer) {
         this.loadBalancer = loadBalancer;
+    }
+
+    public String getServerListStrategyRef() {
+        return serverListStrategyRef;
+    }
+
+    public void setServerListStrategyRef(String serverListStrategyRef) {
+        this.serverListStrategyRef = serverListStrategyRef;
+    }
+
+    public ServiceCallServerListStrategy getServerListStrategy() {
+        return serverListStrategy;
+    }
+
+    public void setServerListStrategy(ServiceCallServerListStrategy serverListStrategy) {
+        this.serverListStrategy = serverListStrategy;
     }
 }

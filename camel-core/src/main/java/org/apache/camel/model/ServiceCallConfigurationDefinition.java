@@ -24,6 +24,7 @@ import javax.xml.bind.annotation.XmlTransient;
 
 import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.ServiceCallLoadBalancer;
+import org.apache.camel.spi.ServiceCallServerListStrategy;
 
 @Metadata(label = "eip,routing")
 @XmlRootElement(name = "toServiceConfiguration")
@@ -66,6 +67,10 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
     private String loadBalancerRef;
     @XmlTransient
     private ServiceCallLoadBalancer loadBalancer;
+    @XmlAttribute
+    private String serverListStrategyRef;
+    @XmlTransient
+    private ServiceCallServerListStrategy serverListStrategy;
 
     public ServiceCallConfigurationDefinition() {
     }
@@ -213,6 +218,22 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
         this.loadBalancer = loadBalancer;
     }
 
+    public String getServerListStrategyRef() {
+        return serverListStrategyRef;
+    }
+
+    public void setServerListStrategyRef(String serverListStrategyRef) {
+        this.serverListStrategyRef = serverListStrategyRef;
+    }
+
+    public ServiceCallServerListStrategy getServerListStrategy() {
+        return serverListStrategy;
+    }
+
+    public void setServerListStrategy(ServiceCallServerListStrategy serverListStrategy) {
+        this.serverListStrategy = serverListStrategy;
+    }
+
     // Fluent API
     // -------------------------------------------------------------------------
 
@@ -349,6 +370,22 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
      */
     public ServiceCallConfigurationDefinition loadBalancer(ServiceCallLoadBalancer loadBalancer) {
         setLoadBalancer(loadBalancer);
+        return this;
+    }
+
+    /**
+     * Sets a reference to a custom {@link org.apache.camel.spi.ServiceCallServerListStrategy} to use.
+     */
+    public ServiceCallConfigurationDefinition serverListStrategy(String serverListStrategyRef) {
+        setServerListStrategyRef(serverListStrategyRef);
+        return this;
+    }
+
+    /**
+     * Sets a custom {@link org.apache.camel.spi.ServiceCallServerListStrategy} to use.
+     */
+    public ServiceCallConfigurationDefinition serverListStrategy(ServiceCallServerListStrategy serverListStrategy) {
+        setServerListStrategy(serverListStrategy);
         return this;
     }
 

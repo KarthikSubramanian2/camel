@@ -16,15 +16,17 @@
  */
 package org.apache.camel.component.kubernetes.processor;
 
+import org.apache.camel.spi.ServiceCallServer;
+
 /**
  * Represents a model of a kubernetes server.
  */
-public final class Server {
+public final class KubernetesServer implements ServiceCallServer {
 
     private final String ip;
     private final int port;
 
-    public Server(String ip, int port) {
+    public KubernetesServer(String ip, int port) {
         this.ip = ip;
         this.port = port;
     }

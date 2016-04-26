@@ -22,13 +22,13 @@ import java.util.List;
 
 import org.apache.camel.spi.ServiceCallLoadBalancer;
 
-public class RoundRobinBalancer implements ServiceCallLoadBalancer<Server> {
+public class RoundRobinBalancer implements ServiceCallLoadBalancer<KubernetesServer> {
 
     private int counter = -1;
 
     @Override
-    public Server chooseServer(Collection<Server> servers) {
-        List<Server> list = new ArrayList<>(servers);
+    public KubernetesServer chooseServer(Collection<KubernetesServer> servers) {
+        List<KubernetesServer> list = new ArrayList<>(servers);
 
         int size = list.size();
         if (++counter >= size) {

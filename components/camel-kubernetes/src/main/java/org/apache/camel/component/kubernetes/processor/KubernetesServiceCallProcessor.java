@@ -16,7 +16,7 @@
  */
 package org.apache.camel.component.kubernetes.processor;
 
-import java.util.List;
+import java.util.Collection;
 import java.util.concurrent.RejectedExecutionException;
 
 import io.fabric8.kubernetes.client.Config;
@@ -35,6 +35,7 @@ import org.apache.camel.component.kubernetes.KubernetesConstants;
 import org.apache.camel.processor.SendDynamicProcessor;
 import org.apache.camel.spi.IdAware;
 import org.apache.camel.spi.ServiceCallLoadBalancer;
+import org.apache.camel.spi.ServiceCallServerListStrategy;
 import org.apache.camel.support.ServiceSupport;
 import org.apache.camel.util.AsyncProcessorHelper;
 import org.apache.camel.util.ObjectHelper;
@@ -58,9 +59,8 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
     private final String uri;
     private final ExchangePattern exchangePattern;
     private final KubernetesConfiguration configuration;
-    private KubernetesServiceDiscovery discovery;
-
-    private ServiceCallLoadBalancer<Server> loadBalancer;
+    private ServiceCallServerListStrategy<KubernetesServer> serverListStrategy;
+    private ServiceCallLoadBalancer<KubernetesServer> loadBalancer;
     private final ServiceCallExpression serviceCallExpression;
     private SendDynamicProcessor processor;
 
@@ -101,9 +101,9 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
 
     @Override
     public boolean process(Exchange exchange, AsyncCallback callback) {
-        List<Server> servers = null;
+        Collection<KubernetesServer> servers = null;
         try {
-            servers = discovery.getUpdatedListOfServers();
+            servers = serverListStrategy.getUpdatedListOfServers();
             if (servers == null || servers.isEmpty()) {
                 exchange.setException(new RejectedExecutionException("No active services with name " + name + " in namespace " + namespace));
             }
@@ -117,7 +117,7 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
         }
 
         // let the client load balancer chose which server to use
-        Server server = loadBalancer.chooseServer(servers);
+        KubernetesServer server = loadBalancer.chooseServer(servers);
         String ip = server.getIp();
         int port = server.getPort();
         LOG.debug("Random selected service {} active at server: {}:{}", name, ip, port);
@@ -155,12 +155,20 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
         return "kubernetes";
     }
 
-    public ServiceCallLoadBalancer<Server> getLoadBalancer() {
+    public ServiceCallLoadBalancer<KubernetesServer> getLoadBalancer() {
         return loadBalancer;
     }
 
-    public void setLoadBalancer(ServiceCallLoadBalancer<Server> loadBalancer) {
+    public void setLoadBalancer(ServiceCallLoadBalancer<KubernetesServer> loadBalancer) {
         this.loadBalancer = loadBalancer;
+    }
+
+    public ServiceCallServerListStrategy getServerListStrategy() {
+        return serverListStrategy;
+    }
+
+    public void setServerListStrategy(ServiceCallServerListStrategy serverListStrategy) {
+        this.serverListStrategy = serverListStrategy;
     }
 
     @Override
@@ -172,20 +180,22 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
         if (loadBalancer == null) {
             loadBalancer = new RandomLoadBalancer();
         }
-        LOG.info("KubernetesServiceCall at namespace: {} with service name: {} is using load balancer: {}", namespace, name, loadBalancer);
+        if (serverListStrategy == null) {
+            serverListStrategy = new KubernetesServiceCallServerListStrategy(name, namespace, null, createKubernetesClient());
+        }
+        LOG.info("KubernetesServiceCall at namespace: {} with service name: {} is using load balancer: {} and service discovery: {}", namespace, name, loadBalancer, serverListStrategy);
 
-        discovery = new KubernetesServiceDiscovery(name, namespace, null, createKubernetesClient());
         processor = new SendDynamicProcessor(uri, serviceCallExpression);
         processor.setCamelContext(getCamelContext());
         if (exchangePattern != null) {
             processor.setPattern(exchangePattern);
         }
-        ServiceHelper.startServices(discovery, processor);
+        ServiceHelper.startServices(serverListStrategy, processor);
     }
 
     @Override
     protected void doStop() throws Exception {
-        ServiceHelper.stopServices(processor, discovery);
+        ServiceHelper.stopServices(processor, serverListStrategy);
     }
 
     private OpenShiftClient createKubernetesClient() {

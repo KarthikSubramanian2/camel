@@ -28,6 +28,7 @@ import org.apache.camel.model.ServiceCallDefinition;
 import org.apache.camel.spi.ProcessorFactory;
 import org.apache.camel.spi.RouteContext;
 import org.apache.camel.spi.ServiceCallLoadBalancer;
+import org.apache.camel.spi.ServiceCallServerListStrategy;
 import org.apache.camel.util.CamelContextHelper;
 import org.apache.camel.util.IntrospectionSupport;
 
@@ -90,8 +91,18 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
                 lb = configureLoadBalancer(routeContext, configRef);
             }
 
+            // lookup the server list strategy to use (configured on EIP takes precedence vs configured on configuration)
+            ServiceCallServerListStrategy sl = configureServerListStrategy(routeContext, sc);
+            if (sl == null && config != null) {
+                sl = configureServerListStrategy(routeContext, config);
+            }
+            if (sl == null && configRef != null) {
+                sl = configureServerListStrategy(routeContext, configRef);
+            }
+
             KubernetesServiceCallProcessor processor = new KubernetesServiceCallProcessor(name, namespace, uri, mep, kc);
             processor.setLoadBalancer(lb);
+            processor.setServerListStrategy(sl);
             return processor;
         } else {
             return null;
@@ -131,6 +142,28 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
             } else {
                 lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ref, ServiceCallLoadBalancer.class);
             }
+        }
+        return lb;
+    }
+
+    private ServiceCallServerListStrategy configureServerListStrategy(RouteContext routeContext, ServiceCallDefinition sd) {
+        ServiceCallServerListStrategy lb = null;
+
+        if (sd != null) {
+            lb = sd.getServerListStrategy();
+            if (lb == null && sd.getServerListStrategyRef() != null) {
+                lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), sd.getServerListStrategyRef(), ServiceCallServerListStrategy.class);
+            }
+        }
+
+        return lb;
+    }
+
+    private ServiceCallServerListStrategy configureServerListStrategy(RouteContext routeContext, ServiceCallConfigurationDefinition config) {
+        ServiceCallServerListStrategy lb = config.getServerListStrategy();
+        if (lb == null && config.getServerListStrategyRef() != null) {
+            String ref = config.getServerListStrategyRef();
+            lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ref, ServiceCallServerListStrategy.class);
         }
         return lb;
     }

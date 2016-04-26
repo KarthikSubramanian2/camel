@@ -14,27 +14,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.kubernetes.processor;
+package org.apache.camel.spi;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Random;
+/**
+ * Represents a server that host a service for the Service Call EIP.
+ *
+ * @see ServiceCallLoadBalancer
+ * @see ServiceCallServerListStrategy
+ */
+public interface ServiceCallServer {
 
-import org.apache.camel.spi.ServiceCallLoadBalancer;
+    /**
+     * Gets the IP or hostname of the server hosting the service
+     */
+    String getIp();
 
-public class RandomLoadBalancer implements ServiceCallLoadBalancer<KubernetesServer> {
-
-    @Override
-    public KubernetesServer chooseServer(Collection<KubernetesServer> servers) {
-        List<KubernetesServer> list = new ArrayList<>(servers);
-        int size = list.size();
-        int ran = new Random().nextInt(size);
-        return list.get(ran);
-    }
-
-    @Override
-    public String toString() {
-        return "RandomLoadBalancer";
-    }
+    /**
+     * Gets the port number of the server hosting the service
+     */
+    int getPort();
 }

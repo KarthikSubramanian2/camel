@@ -5,9 +5,9 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -19,18 +19,27 @@ package org.apache.camel.spi;
 import java.util.Collection;
 
 /**
- * Allows SPIs to implement custom load balancing strategies for the Service Call EIP.
+ * Allows SPIs to implement custom server list strategies for the Service Call EIP.
  *
- * @see ServiceCallServerListStrategy
+ * @see ServiceCallLoadBalancer
+ * @see ServiceCallServer
  */
-public interface ServiceCallLoadBalancer<T extends ServiceCallServer> {
+public interface ServiceCallServerListStrategy<T extends ServiceCallServer> {
 
     /**
-     * Chooses one of the servers to use using the implemented strategy.
-     *
-     * @param servers  list of servers
-     * @return the chosen server to use.
+     * Gets the initial list of servers.
+     * <p/>
+     * This method may return <tt>null</tt> or an empty list.
      */
-    T chooseServer(Collection<T> servers);
+    Collection<T> getInitialListOfServers();
+
+    /**
+     * Gets the updated list of servers.
+     * <p/>
+     * This method can either be called on-demand prior to a service call, or have
+     * a background job that is scheduled to update the list, or a watcher
+     * that triggers when the list of servers changes.
+     */
+    Collection<T> getUpdatedListOfServers();
 
 }
