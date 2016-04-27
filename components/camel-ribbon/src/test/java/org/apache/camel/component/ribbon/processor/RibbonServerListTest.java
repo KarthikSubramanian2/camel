@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.ribbon;
+package org.apache.camel.component.ribbon.processor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,7 +35,7 @@ public class RibbonServerListTest extends TestCase {
         servers.add(new RibbonServer("localhost", 9090));
         servers.add(new RibbonServer("localhost", 9091));
 
-        ServerList<RibbonServer> list = new RibbonServiceCallServerListStrategy(servers);
+        ServerList<RibbonServer> list = new RibbonServiceCallStaticServerListStrategy(servers);
 
         ZoneAwareLoadBalancer<RibbonServer> lb = LoadBalancerBuilder.<RibbonServer>newBuilder()
             .withDynamicServerList(list)

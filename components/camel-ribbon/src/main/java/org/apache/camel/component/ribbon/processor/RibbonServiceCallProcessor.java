@@ -5,24 +5,25 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p/>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p/>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.kubernetes.processor;
+package org.apache.camel.component.ribbon.processor;
 
-import java.util.Collection;
 import java.util.concurrent.RejectedExecutionException;
 
-import io.fabric8.kubernetes.client.Config;
-import io.fabric8.kubernetes.client.ConfigBuilder;
-import io.fabric8.openshift.client.DefaultOpenShiftClient;
-import io.fabric8.openshift.client.OpenShiftClient;
+import com.netflix.loadbalancer.IRule;
+import com.netflix.loadbalancer.LoadBalancerBuilder;
+import com.netflix.loadbalancer.RoundRobinRule;
+import com.netflix.loadbalancer.Server;
+import com.netflix.loadbalancer.ServerList;
+import com.netflix.loadbalancer.ZoneAwareLoadBalancer;
 import org.apache.camel.AsyncCallback;
 import org.apache.camel.AsyncProcessor;
 import org.apache.camel.CamelContext;
@@ -30,8 +31,8 @@ import org.apache.camel.CamelContextAware;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.Traceable;
-import org.apache.camel.component.kubernetes.KubernetesConfiguration;
-import org.apache.camel.component.kubernetes.KubernetesConstants;
+import org.apache.camel.component.ribbon.RibbonConfiguration;
+import org.apache.camel.component.ribbon.RibbonConstants;
 import org.apache.camel.processor.SendDynamicProcessor;
 import org.apache.camel.spi.IdAware;
 import org.apache.camel.spi.ServiceCallLoadBalancer;
@@ -44,11 +45,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Kubernetes based implementation of the the ServiceCall EIP.
+ * Ribbon based implementation of the the ServiceCall EIP.
  */
-public class KubernetesServiceCallProcessor extends ServiceSupport implements AsyncProcessor, CamelContextAware, Traceable, IdAware {
+public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncProcessor, CamelContextAware, Traceable, IdAware {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KubernetesServiceCallProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(RibbonServiceCallProcessor.class);
 
     private CamelContext camelContext;
     private String id;
@@ -58,15 +59,17 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
     private final String namespace;
     private final String uri;
     private final ExchangePattern exchangePattern;
-    private final KubernetesConfiguration configuration;
-    private ServiceCallServerListStrategy<KubernetesServer> serverListStrategy;
-    private ServiceCallLoadBalancer<KubernetesServer> loadBalancer;
+    private final RibbonConfiguration configuration;
+    private ServiceCallServerListStrategy<RibbonServer> serverListStrategy;
+    private ServiceCallLoadBalancer<RibbonServer> loadBalancer;
+    private ZoneAwareLoadBalancer<RibbonServer> ribbonLoadBalancer;
+    private IRule rule;
     private final ServiceCallExpression serviceCallExpression;
     private SendDynamicProcessor processor;
 
     // TODO: allow to plugin custom load balancer like ribbon
 
-    public KubernetesServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, KubernetesConfiguration configuration) {
+    public RibbonServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, RibbonConfiguration configuration) {
         // setup from the provided name which can contain scheme and context-path information as well
         String serviceName;
         if (name.contains("/")) {
@@ -101,10 +104,11 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
 
     @Override
     public boolean process(Exchange exchange, AsyncCallback callback) {
-        Collection<KubernetesServer> servers = null;
+        Server server = null;
         try {
-            servers = serverListStrategy.getUpdatedListOfServers();
-            if (servers == null || servers.isEmpty()) {
+            // let the client load balancer chose which server to use
+            server = ribbonLoadBalancer.chooseServer();
+            if (server == null) {
                 exchange.setException(new RejectedExecutionException("No active services with name " + name + " in namespace " + namespace));
             }
         } catch (Throwable e) {
@@ -116,15 +120,13 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
             return true;
         }
 
-        // let the client load balancer chose which server to use
-        KubernetesServer server = loadBalancer.chooseServer(servers);
-        String ip = server.getIp();
+        String ip = server.getHost();
         int port = server.getPort();
         LOG.debug("Service {} active at server: {}:{}", name, ip, port);
 
         // set selected server as header
-        exchange.getIn().setHeader(KubernetesConstants.KUBERNETES_SERVER_IP, ip);
-        exchange.getIn().setHeader(KubernetesConstants.KUBERNETES_SERVER_PORT, port);
+        exchange.getIn().setHeader(RibbonConstants.RIBBON_SERVER_IP, ip);
+        exchange.getIn().setHeader(RibbonConstants.RIBBON_SERVER_PORT, port);
 
         // use the dynamic send processor to call the service
         return processor.process(exchange, callback);
@@ -155,11 +157,11 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
         return "kubernetes";
     }
 
-    public ServiceCallLoadBalancer<KubernetesServer> getLoadBalancer() {
+    public ServiceCallLoadBalancer<RibbonServer> getLoadBalancer() {
         return loadBalancer;
     }
 
-    public void setLoadBalancer(ServiceCallLoadBalancer<KubernetesServer> loadBalancer) {
+    public void setLoadBalancer(ServiceCallLoadBalancer<RibbonServer> loadBalancer) {
         this.loadBalancer = loadBalancer;
     }
 
@@ -172,18 +174,29 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     protected void doStart() throws Exception {
         ObjectHelper.notEmpty(name, "name", this);
-        ObjectHelper.notEmpty(namespace, "namespace", this);
-        ObjectHelper.notEmpty(configuration.getMasterUrl(), "masterUrl", this);
 
-        if (loadBalancer == null) {
-            loadBalancer = new RandomLoadBalancer();
-        }
         if (serverListStrategy == null) {
-            serverListStrategy = new KubernetesServiceCallServerListStrategy(name, namespace, null, createKubernetesClient());
+            serverListStrategy = new RibbonServiceCallStaticServerListStrategy();
         }
-        LOG.info("KubernetesServiceCall at namespace: {} with service name: {} is using load balancer: {} and service discovery: {}", namespace, name, loadBalancer, serverListStrategy);
+
+        if (!(serverListStrategy instanceof ServerList)) {
+            throw new IllegalArgumentException("ServerListStrategy must be instanceof com.netflix.loadbalancer.ServerList but is of type: " + serverListStrategy.getClass().getName());
+        }
+
+        if (rule == null) {
+            // use round robin rule by default
+            rule = new RoundRobinRule();
+        }
+
+        ribbonLoadBalancer = LoadBalancerBuilder.<RibbonServer>newBuilder()
+                .withDynamicServerList((ServerList<RibbonServer>) serverListStrategy)
+                .withRule(rule)
+                .buildDynamicServerListLoadBalancer();
+
+        LOG.info("RibbonServiceCall at namespace: {} with service name: {} is using load balancer: {} and service discovery: {}", namespace, name, ribbonLoadBalancer, serverListStrategy);
 
         processor = new SendDynamicProcessor(uri, serviceCallExpression);
         processor.setCamelContext(getCamelContext());
@@ -198,53 +211,5 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
         ServiceHelper.stopServices(processor, serverListStrategy);
     }
 
-    private OpenShiftClient createKubernetesClient() {
-        // TODO: need to use OpenShiftClient until fabric8-client can auto detect OS vs Kube environment
-        LOG.debug("Create Kubernetes client with the following Configuration: " + configuration.toString());
-
-        ConfigBuilder builder = new ConfigBuilder();
-        builder.withMasterUrl(configuration.getMasterUrl());
-        if ((ObjectHelper.isNotEmpty(configuration.getUsername())
-                && ObjectHelper.isNotEmpty(configuration.getPassword()))
-                && ObjectHelper.isEmpty(configuration.getOauthToken())) {
-            builder.withUsername(configuration.getUsername());
-            builder.withPassword(configuration.getPassword());
-        } else {
-            builder.withOauthToken(configuration.getOauthToken());
-        }
-        if (ObjectHelper.isNotEmpty(configuration.getCaCertData())) {
-            builder.withCaCertData(configuration.getCaCertData());
-        }
-        if (ObjectHelper.isNotEmpty(configuration.getCaCertFile())) {
-            builder.withCaCertFile(configuration.getCaCertFile());
-        }
-        if (ObjectHelper.isNotEmpty(configuration.getClientCertData())) {
-            builder.withClientCertData(configuration.getClientCertData());
-        }
-        if (ObjectHelper.isNotEmpty(configuration.getClientCertFile())) {
-            builder.withClientCertFile(configuration.getClientCertFile());
-        }
-        if (ObjectHelper.isNotEmpty(configuration.getApiVersion())) {
-            builder.withApiVersion(configuration.getApiVersion());
-        }
-        if (ObjectHelper.isNotEmpty(configuration.getClientKeyAlgo())) {
-            builder.withClientKeyAlgo(configuration.getClientKeyAlgo());
-        }
-        if (ObjectHelper.isNotEmpty(configuration.getClientKeyData())) {
-            builder.withClientKeyData(configuration.getClientKeyData());
-        }
-        if (ObjectHelper.isNotEmpty(configuration.getClientKeyFile())) {
-            builder.withClientKeyFile(configuration.getClientKeyFile());
-        }
-        if (ObjectHelper.isNotEmpty(configuration.getClientKeyPassphrase())) {
-            builder.withClientKeyPassphrase(configuration.getClientKeyPassphrase());
-        }
-        if (ObjectHelper.isNotEmpty(configuration.getTrustCerts())) {
-            builder.withTrustCerts(configuration.getTrustCerts());
-        }
-
-        Config conf = builder.build();
-        return new DefaultOpenShiftClient(conf);
-    }
-
 }
+

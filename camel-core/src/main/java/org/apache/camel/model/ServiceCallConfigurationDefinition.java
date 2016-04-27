@@ -27,7 +27,7 @@ import org.apache.camel.spi.ServiceCallLoadBalancer;
 import org.apache.camel.spi.ServiceCallServerListStrategy;
 
 @Metadata(label = "eip,routing")
-@XmlRootElement(name = "toServiceConfiguration")
+@XmlRootElement(name = "serviceCallConfiguration")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class ServiceCallConfigurationDefinition extends IdentifiedType {
 

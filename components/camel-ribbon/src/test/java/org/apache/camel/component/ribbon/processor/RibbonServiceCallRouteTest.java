@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.ribbon;
+package org.apache.camel.component.ribbon.processor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -46,20 +46,19 @@ public class RibbonServiceCallRouteTest extends CamelTestSupport {
         return new RouteBuilder() {
             @Override
             public void configure() throws Exception {
-                // setup a static ribbon server list
+                // setup a static ribbon server list with these 2 servers to start with
                 List<RibbonServer> servers = new ArrayList<>();
                 servers.add(new RibbonServer("localhost", 9090));
                 servers.add(new RibbonServer("localhost", 9091));
-                RibbonServiceCallServerListStrategy list = new RibbonServiceCallServerListStrategy(servers);
-
-
+                RibbonServiceCallStaticServerListStrategy list = new RibbonServiceCallStaticServerListStrategy(servers);
 
                 // configure camel service call
                 ServiceCallConfigurationDefinition config = new ServiceCallConfigurationDefinition();
                 config.setServerListStrategy(list);
+//                config.setLoadBalancerRef("roundrobin");
 
                 from("direct:start")
-                        .serviceCall("cdi-camel-jetty", null, config)
+                        .serviceCall("myService", null, config)
                         .to("mock:result");
 
                 from("jetty:http://localhost:9090")

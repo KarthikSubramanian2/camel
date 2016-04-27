@@ -76,7 +76,7 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
         if (discovery != null) {
             throw new IllegalStateException("Cannot find Camel component on the classpath implementing the discovery provider: " + discovery);
         } else {
-            throw new IllegalStateException("Cannot find Camel component supporting the ToService EIP. Add camel-kubernetes if you are using Kubernetes.");
+            throw new IllegalStateException("Cannot find Camel component supporting the ServiceCall EIP such as camel-kubernetes or camel-ribbon.");
         }
     }
 

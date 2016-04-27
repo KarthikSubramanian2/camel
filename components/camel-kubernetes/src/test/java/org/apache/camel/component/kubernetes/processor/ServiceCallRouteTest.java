@@ -49,6 +49,8 @@ public class ServiceCallRouteTest extends CamelTestSupport {
                 config.setLoadBalancerRef("roundrobin");
 
                 from("direct:start")
+//                    .serviceCall("cdi-camel-jetty", null, config)
+                    .to("http:{{service:cdi-camel-jetty}}")
                     .serviceCall("cdi-camel-jetty", null, config)
                     .to("mock:result");
             }

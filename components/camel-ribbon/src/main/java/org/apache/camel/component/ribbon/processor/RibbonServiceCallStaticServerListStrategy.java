@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.ribbon;
+package org.apache.camel.component.ribbon.processor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -24,15 +24,15 @@ import com.netflix.loadbalancer.AbstractServerList;
 import com.netflix.loadbalancer.ServerList;
 import org.apache.camel.spi.ServiceCallServerListStrategy;
 
-public class RibbonServiceCallServerListStrategy extends AbstractServerList<RibbonServer> implements ServerList<RibbonServer>, ServiceCallServerListStrategy<RibbonServer> {
+public class RibbonServiceCallStaticServerListStrategy extends AbstractServerList<RibbonServer> implements ServerList<RibbonServer>, ServiceCallServerListStrategy<RibbonServer> {
 
     private IClientConfig clientConfig;
     private final List<RibbonServer> servers = new ArrayList<>();
 
-    public RibbonServiceCallServerListStrategy() {
+    public RibbonServiceCallStaticServerListStrategy() {
     }
 
-    public RibbonServiceCallServerListStrategy(List<RibbonServer> servers) {
+    public RibbonServiceCallStaticServerListStrategy(List<RibbonServer> servers) {
         this.servers.addAll(servers);
     }
 
