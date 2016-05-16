@@ -51,6 +51,7 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
     private String serviceCallConfigurationRef;
     @XmlAttribute
     private String loadBalancerRef;
+    // TODO: allow to use custom type as load balancer
     @XmlTransient
     private ServiceCallLoadBalancer loadBalancer;
     @XmlAttribute
@@ -108,6 +109,14 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
     }
 
     /**
+     * Sets the uri of the service to use
+     */
+    public ServiceCallDefinition uri(String uri) {
+        setUri(uri);
+        return this;
+    }
+
+    /**
      * Sets the discovery provided to use.
      * <p/>
      * Use kubernetes to use kubernetes.
@@ -118,6 +127,11 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
         return this;
     }
 
+    /**
+     * Configures the Service Call EIP
+     * <p/>
+     * Use <tt>end</tt> when configuration is complete, to return back to the Service Call EIP.
+     */
     public ServiceCallConfigurationDefinition serviceCallConfiguration() {
         serviceCallConfiguration = new ServiceCallConfigurationDefinition(this);
         return serviceCallConfiguration;

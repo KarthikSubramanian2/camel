@@ -45,8 +45,6 @@ public class RibbonServiceCallKubernetesRouteTest extends CamelTestSupport {
                 config.setUsername("admin");
                 config.setPassword("admin");
                 config.setNamespace("default");
-                // lets use the built-in round robin (random is default)
-                config.setLoadBalancerRef("roundrobin");
 
                 from("direct:start")
                         .serviceCall("cdi-camel-jetty", null, config)

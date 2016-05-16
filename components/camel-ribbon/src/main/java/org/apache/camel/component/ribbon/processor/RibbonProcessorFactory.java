@@ -19,8 +19,7 @@ package org.apache.camel.component.ribbon.processor;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.netflix.loadbalancer.RandomRule;
-import com.netflix.loadbalancer.RoundRobinRule;
+import com.netflix.loadbalancer.IRule;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.Processor;
 import org.apache.camel.component.ribbon.RibbonConfiguration;
@@ -29,7 +28,6 @@ import org.apache.camel.model.ServiceCallConfigurationDefinition;
 import org.apache.camel.model.ServiceCallDefinition;
 import org.apache.camel.spi.ProcessorFactory;
 import org.apache.camel.spi.RouteContext;
-import org.apache.camel.spi.ServiceCallLoadBalancer;
 import org.apache.camel.spi.ServiceCallServerListStrategy;
 import org.apache.camel.util.CamelContextHelper;
 import org.apache.camel.util.IntrospectionSupport;
@@ -85,7 +83,7 @@ public class RibbonProcessorFactory implements ProcessorFactory {
             }
 
             // lookup the load balancer to use (configured on EIP takes precedence vs configured on configuration)
-            ServiceCallLoadBalancer lb = configureLoadBalancer(routeContext, sc);
+            Object lb = configureLoadBalancer(routeContext, sc);
             if (lb == null && config != null) {
                 lb = configureLoadBalancer(routeContext, config);
             }
@@ -102,8 +100,13 @@ public class RibbonProcessorFactory implements ProcessorFactory {
                 sl = configureServerListStrategy(routeContext, configRef);
             }
 
+            // must be a ribbon load balancer
+            if (lb != null && !(lb instanceof IRule)) {
+                throw new IllegalArgumentException("Load balancer must be of type: " + IRule.class + " but is of type: " + lb.getClass().getName());
+            }
+
             RibbonServiceCallProcessor processor = new RibbonServiceCallProcessor(name, namespace, uri, mep, rc);
-            processor.setLoadBalancer(lb);
+            processor.setRule((IRule) lb);
             processor.setServerListStrategy(sl);
             return processor;
         } else {
@@ -111,39 +114,25 @@ public class RibbonProcessorFactory implements ProcessorFactory {
         }
     }
 
-    private ServiceCallLoadBalancer configureLoadBalancer(RouteContext routeContext, ServiceCallDefinition sd) {
-        ServiceCallLoadBalancer lb = null;
+    private Object configureLoadBalancer(RouteContext routeContext, ServiceCallDefinition sd) {
+        Object lb = null;
 
         if (sd != null) {
             lb = sd.getLoadBalancer();
             if (lb == null && sd.getLoadBalancerRef() != null) {
                 String ref = sd.getLoadBalancerRef();
-                // special for ref is referring to built-in
-                if ("random".equalsIgnoreCase(ref)) {
-                    lb = new RibbonLoadBalancer(new RandomRule());
-                } else if ("roundrobin".equalsIgnoreCase(ref)) {
-                    lb = new RibbonLoadBalancer(new RoundRobinRule());
-                } else {
-                    lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ref, ServiceCallLoadBalancer.class);
-                }
+                lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ref);
             }
         }
 
         return lb;
     }
 
-    private ServiceCallLoadBalancer configureLoadBalancer(RouteContext routeContext, ServiceCallConfigurationDefinition config) {
-        ServiceCallLoadBalancer lb = config.getLoadBalancer();
+    private Object configureLoadBalancer(RouteContext routeContext, ServiceCallConfigurationDefinition config) {
+        Object lb = config.getLoadBalancer();
         if (lb == null && config.getLoadBalancerRef() != null) {
             String ref = config.getLoadBalancerRef();
-            // special for ref is referring to built-in
-            if ("random".equalsIgnoreCase(ref)) {
-                lb = new RibbonLoadBalancer(new RandomRule());
-            } else if ("roundrobin".equalsIgnoreCase(ref)) {
-                lb = new RibbonLoadBalancer(new RoundRobinRule());
-            } else {
-                lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ref, ServiceCallLoadBalancer.class);
-            }
+            lb = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), ref);
         }
         return lb;
     }

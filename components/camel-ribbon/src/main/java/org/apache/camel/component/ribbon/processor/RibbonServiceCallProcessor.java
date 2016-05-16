@@ -35,7 +35,6 @@ import org.apache.camel.component.ribbon.RibbonConfiguration;
 import org.apache.camel.component.ribbon.RibbonConstants;
 import org.apache.camel.processor.SendDynamicProcessor;
 import org.apache.camel.spi.IdAware;
-import org.apache.camel.spi.ServiceCallLoadBalancer;
 import org.apache.camel.spi.ServiceCallServerListStrategy;
 import org.apache.camel.support.ServiceSupport;
 import org.apache.camel.util.AsyncProcessorHelper;
@@ -61,13 +60,10 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
     private final ExchangePattern exchangePattern;
     private final RibbonConfiguration configuration;
     private ServiceCallServerListStrategy<RibbonServer> serverListStrategy;
-    private ServiceCallLoadBalancer<RibbonServer> loadBalancer;
     private ZoneAwareLoadBalancer<RibbonServer> ribbonLoadBalancer;
     private IRule rule;
     private final RibbonServiceCallExpression serviceCallExpression;
     private SendDynamicProcessor processor;
-
-    // TODO: allow to plugin custom load balancer like ribbon
 
     public RibbonServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, RibbonConfiguration configuration) {
         // setup from the provided name which can contain scheme and context-path information as well
@@ -157,20 +153,20 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
         return "kubernetes";
     }
 
-    public ServiceCallLoadBalancer<RibbonServer> getLoadBalancer() {
-        return loadBalancer;
-    }
-
-    public void setLoadBalancer(ServiceCallLoadBalancer<RibbonServer> loadBalancer) {
-        this.loadBalancer = loadBalancer;
-    }
-
     public ServiceCallServerListStrategy getServerListStrategy() {
         return serverListStrategy;
     }
 
     public void setServerListStrategy(ServiceCallServerListStrategy serverListStrategy) {
         this.serverListStrategy = serverListStrategy;
+    }
+
+    public IRule getRule() {
+        return rule;
+    }
+
+    public void setRule(IRule rule) {
+        this.rule = rule;
     }
 
     @Override

@@ -55,7 +55,6 @@ public class RibbonServiceCallRouteTest extends CamelTestSupport {
                 // configure camel service call
                 ServiceCallConfigurationDefinition config = new ServiceCallConfigurationDefinition();
                 config.setServerListStrategy(list);
-//                config.setLoadBalancerRef("roundrobin");
 
                 from("direct:start")
                         .serviceCall("myService", null, config)
