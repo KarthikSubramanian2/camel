@@ -16,6 +16,7 @@
  */
 package org.apache.camel.component.ribbon;
 
+import com.netflix.loadbalancer.IPing;
 import com.netflix.loadbalancer.IRule;
 
 public class RibbonConfiguration {
@@ -24,6 +25,7 @@ public class RibbonConfiguration {
     private String username;
     private String password;
     private IRule rule;
+    private IPing ping;
 
     public String getNamespace() {
         return namespace;
@@ -55,5 +57,13 @@ public class RibbonConfiguration {
 
     public void setRule(IRule rule) {
         this.rule = rule;
+    }
+
+    public IPing getPing() {
+        return ping;
+    }
+
+    public void setPing(IPing ping) {
+        this.ping = ping;
     }
 }

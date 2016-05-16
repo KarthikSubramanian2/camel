@@ -25,11 +25,22 @@ import com.netflix.loadbalancer.ServerList;
 import org.apache.camel.spi.ServiceCallServerListStrategy;
 import org.apache.camel.util.ObjectHelper;
 
+/**
+ * A static list of known servers to be used by the Ribbon load balancer with the Camel Service Call EIP.
+ * <p/>
+ * You can implement custom implementations by existing this class and override the {@link #getUpdatedListOfServers()} that is called by Ribbon to refresh the known list
+ * of servers. For example to periodically query a remote server registry for a list of active servers.
+ */
 public class RibbonServiceCallStaticServerListStrategy extends AbstractServerList<RibbonServer> implements ServerList<RibbonServer>, ServiceCallServerListStrategy<RibbonServer> {
 
     private IClientConfig clientConfig;
     private final List<RibbonServer> servers = new ArrayList<>();
 
+    /**
+     * Build a {@link RibbonServiceCallStaticServerListStrategy} with the initial list of servers
+     *
+     * @param servers servers separated by comma in the format: host:port,host2:port,host3:port and so on.
+     */
     public static RibbonServiceCallStaticServerListStrategy build(String servers) {
         RibbonServiceCallStaticServerListStrategy answer = new RibbonServiceCallStaticServerListStrategy();
         String[] parts = servers.split(",");
@@ -49,14 +60,23 @@ public class RibbonServiceCallStaticServerListStrategy extends AbstractServerLis
         this.servers.addAll(servers);
     }
 
+    /**
+     * Add a server to the known list of servers.
+     */
     public void addServer(RibbonServer server) {
         servers.add(server);
     }
 
+    /**
+     * Add a server to the known list of servers.
+     */
     public void addServer(String host, int port) {
         servers.add(new RibbonServer(host, port));
     }
 
+    /**
+     * Remove an existing server from the list of known servers.
+     */
     public void removeServer(String host, int port) {
         servers.remove(new RibbonServer(host, port));
     }

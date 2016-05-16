@@ -36,7 +36,7 @@
 
     <route>
       <from uri="direct:start"/>
-      <serviceCall name="myService" serviceCallConfigurationRef="myConfig"/>
+      <serviceCall name="myService"/>
       <to uri="mock:result"/>
     </route>
 

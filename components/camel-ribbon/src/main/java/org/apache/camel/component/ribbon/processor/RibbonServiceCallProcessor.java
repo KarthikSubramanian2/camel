@@ -22,6 +22,7 @@ import java.util.concurrent.RejectedExecutionException;
 import com.netflix.client.config.IClientConfig;
 import com.netflix.client.config.IClientConfigKey;
 import com.netflix.loadbalancer.DummyPing;
+import com.netflix.loadbalancer.IPing;
 import com.netflix.loadbalancer.IRule;
 import com.netflix.loadbalancer.PollingServerListUpdater;
 import com.netflix.loadbalancer.RoundRobinRule;
@@ -67,6 +68,7 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
     private ServiceCallServerListStrategy<RibbonServer> serverListStrategy;
     private ZoneAwareLoadBalancer<RibbonServer> ribbonLoadBalancer;
     private IRule rule;
+    private IPing ping;
     private final RibbonServiceCallExpression serviceCallExpression;
     private Map<String, String> ribbonClientConfig;
     private SendDynamicProcessor processor;
@@ -96,6 +98,8 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
         this.uri = uri;
         this.exchangePattern = exchangePattern;
         this.configuration = configuration;
+        this.rule = configuration.getRule();
+        this.ping = configuration.getPing();
         this.serviceCallExpression = new RibbonServiceCallExpression(this.name, this.scheme, this.contextPath, this.uri);
     }
 
@@ -175,6 +179,14 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
         this.rule = rule;
     }
 
+    public IPing getPing() {
+        return ping;
+    }
+
+    public void setPing(IPing ping) {
+        this.ping = ping;
+    }
+
     public Map<String, String> getRibbonClientConfig() {
         return ribbonClientConfig;
     }
@@ -200,6 +212,10 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
             // use round robin rule by default
             rule = new RoundRobinRule();
         }
+        if (ping == null) {
+            // use dummy ping by default
+            ping = new DummyPing();
+        }
 
         // setup client config
         IClientConfig config = IClientConfig.Builder.newBuilder().build();
@@ -213,7 +229,7 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
         }
 
         ServerListUpdater updater = new PollingServerListUpdater(config);
-        ribbonLoadBalancer = new ZoneAwareLoadBalancer<>(config, rule, new DummyPing(), (ServerList<RibbonServer>) serverListStrategy, null, updater);
+        ribbonLoadBalancer = new ZoneAwareLoadBalancer<>(config, rule, ping, (ServerList<RibbonServer>) serverListStrategy, null, updater);
 
         LOG.info("RibbonServiceCall at namespace: {} with service name: {} is using load balancer: {} and server list: {}", namespace, name, ribbonLoadBalancer, serverListStrategy);
 
