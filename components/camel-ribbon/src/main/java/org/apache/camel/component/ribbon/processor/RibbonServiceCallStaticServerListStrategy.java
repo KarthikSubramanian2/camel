@@ -36,6 +36,14 @@ public class RibbonServiceCallStaticServerListStrategy extends AbstractServerLis
         this.servers.addAll(servers);
     }
 
+    public void addServer(RibbonServer server) {
+        servers.add(server);
+    }
+
+    public void addServer(String host, int port) {
+        servers.add(new RibbonServer(host, port));
+    }
+
     @Override
     public void initWithNiwsConfig(IClientConfig clientConfig) {
         this.clientConfig = clientConfig;

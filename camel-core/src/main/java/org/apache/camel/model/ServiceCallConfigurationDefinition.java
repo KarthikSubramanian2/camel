@@ -33,6 +33,8 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
 
     @XmlTransient
     private ServiceCallDefinition parent;
+    @XmlAttribute
+    private String component;
     @XmlAttribute @Metadata(required = "true")
     private String masterUrl;
     @XmlAttribute
@@ -81,6 +83,15 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
 
     // Getter/Setter
     // -------------------------------------------------------------------------
+
+
+    public String getComponent() {
+        return component;
+    }
+
+    public void setComponent(String component) {
+        this.component = component;
+    }
 
     public String getMasterUrl() {
         return masterUrl;
@@ -238,6 +249,14 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
     // -------------------------------------------------------------------------
 
     /**
+     * Sets the name of the Camel component to use such as ribbon or kubernetes
+     */
+    public ServiceCallConfigurationDefinition component(String component) {
+        setComponent(component);
+        return this;
+    }
+
+    /**
      * Sets the URL to the master
      */
     public ServiceCallConfigurationDefinition masterUrl(String masterUrl) {
@@ -392,8 +411,9 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
     /**
      * End of configuration
      */
-    public ServiceCallDefinition end() {
-        return parent;
+    public ProcessorDefinition end() {
+        // end parent as well so we do not have to use 2x end
+        return parent.end();
     }
 
 }

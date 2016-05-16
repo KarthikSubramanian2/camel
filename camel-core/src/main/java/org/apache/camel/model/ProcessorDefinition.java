@@ -656,13 +656,11 @@ public abstract class ProcessorDefinition<Type extends ProcessorDefinition<Type>
     /**
      * Calls the service
      *
-     * @param name the service name
      * @return the builder
      */
     @SuppressWarnings("unchecked")
-    public ServiceCallDefinition serviceCall(String name) {
+    public ServiceCallDefinition serviceCall() {
         ServiceCallDefinition answer = new ServiceCallDefinition();
-        answer.setName(name);
         addOutput(answer);
         return answer;
     }
@@ -671,16 +669,28 @@ public abstract class ProcessorDefinition<Type extends ProcessorDefinition<Type>
      * Calls the service
      *
      * @param name the service name
-     * @param uri  the endpoint uri to use for calling the service
-     * @param configuration the configuration to use
      * @return the builder
      */
     @SuppressWarnings("unchecked")
-    public Type serviceCall(String name, String uri, ServiceCallConfigurationDefinition configuration) {
+    public Type serviceCall(String name) {
+        ServiceCallDefinition answer = new ServiceCallDefinition();
+        answer.setName(name);
+        addOutput(answer);
+        return (Type) this;
+    }
+
+    /**
+     * Calls the service
+     *
+     * @param name the service name
+     * @param uri  the endpoint uri to use for calling the service
+     * @return the builder
+     */
+    @SuppressWarnings("unchecked")
+    public Type serviceCall(String name, String uri) {
         ServiceCallDefinition answer = new ServiceCallDefinition();
         answer.setName(name);
         answer.setUri(uri);
-        answer.setServiceCallConfiguration(configuration);
         addOutput(answer);
         return (Type) this;
     }

@@ -31,7 +31,7 @@ public class RibbonServerListTest extends TestCase {
 
     @Test
     public void testFixedServerList() throws Exception {
-        List<RibbonServer> servers = new ArrayList();
+        List<RibbonServer> servers = new ArrayList<>();
         servers.add(new RibbonServer("localhost", 9090));
         servers.add(new RibbonServer("localhost", 9091));
 

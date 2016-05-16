@@ -29,6 +29,7 @@ import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.RouteContext;
 import org.apache.camel.spi.ServiceCallLoadBalancer;
 import org.apache.camel.spi.ServiceCallServerListStrategy;
+import org.apache.camel.util.CamelContextHelper;
 
 @Metadata(label = "eip,routing")
 @XmlRootElement(name = "serviceCall")
@@ -45,8 +46,6 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
     private String namespace;
     @XmlAttribute @Metadata(required = "true")
     private String name;
-    @XmlAttribute
-    private String discovery;
     @XmlAttribute
     private String serviceCallConfigurationRef;
     @XmlAttribute
@@ -74,8 +73,14 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
 
     @Override
     public Processor createProcessor(RouteContext routeContext) throws Exception {
-        if (discovery != null) {
-            throw new IllegalStateException("Cannot find Camel component on the classpath implementing the discovery provider: " + discovery);
+        String component = serviceCallConfiguration != null ? serviceCallConfiguration.getComponent() : null;
+        if (component == null && serviceCallConfigurationRef != null) {
+            ServiceCallConfigurationDefinition config = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), serviceCallConfigurationRef, ServiceCallConfigurationDefinition.class);
+            component = config.getComponent();
+        }
+
+        if (component != null) {
+            throw new IllegalStateException("Cannot find Camel component on the classpath implementing the discovery provider: " + component);
         } else {
             throw new IllegalStateException("Cannot find Camel component supporting the ServiceCall EIP such as camel-kubernetes or camel-ribbon.");
         }
@@ -113,17 +118,6 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
      */
     public ServiceCallDefinition uri(String uri) {
         setUri(uri);
-        return this;
-    }
-
-    /**
-     * Sets the discovery provided to use.
-     * <p/>
-     * Use kubernetes to use kubernetes.
-     * Use ribbon to use ribbon.
-     */
-    public ServiceCallDefinition discovery(String discovery) {
-        setDiscovery(discovery);
         return this;
     }
 
@@ -210,14 +204,6 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
 
     public void setPattern(ExchangePattern pattern) {
         this.pattern = pattern;
-    }
-
-    public String getDiscovery() {
-        return discovery;
-    }
-
-    public void setDiscovery(String discovery) {
-        this.discovery = discovery;
     }
 
     public ServiceCallConfigurationDefinition getServiceCallConfiguration() {

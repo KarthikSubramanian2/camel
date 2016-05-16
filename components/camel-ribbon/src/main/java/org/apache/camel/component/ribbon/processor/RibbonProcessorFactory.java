@@ -18,6 +18,7 @@ package org.apache.camel.component.ribbon.processor;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import com.netflix.loadbalancer.IRule;
 import org.apache.camel.ExchangePattern;
@@ -49,11 +50,6 @@ public class RibbonProcessorFactory implements ProcessorFactory {
         if (definition instanceof ServiceCallDefinition) {
             ServiceCallDefinition sc = (ServiceCallDefinition) definition;
 
-            // discovery must either not be set, or if set then must be us
-            if (sc.getDiscovery() != null && !"ribbon".equals(sc.getDiscovery())) {
-                return null;
-            }
-
             String name = sc.getName();
             String namespace = sc.getNamespace();
             String uri = sc.getUri();
@@ -65,6 +61,19 @@ public class RibbonProcessorFactory implements ProcessorFactory {
                 configRef = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), sc.getServiceCallConfigurationRef(), ServiceCallConfigurationDefinition.class);
             }
 
+            // if no configuration explicit configured then try to lookup in registry by type and find the best candidate to use
+            if (config == null && configRef == null) {
+                Set<ServiceCallConfigurationDefinition> set = routeContext.getCamelContext().getRegistry().findByType(ServiceCallConfigurationDefinition.class);
+                if (set != null) {
+                    for (ServiceCallConfigurationDefinition candidate : set) {
+                        if (candidate.getComponent() == null || "kubernetes".equals(candidate.getComponent())) {
+                            config = candidate;
+                            break;
+                        }
+                    }
+                }
+            }
+
             // extract the properties from the configuration from the model
             Map<String, Object> parameters = new HashMap<>();
             if (configRef != null) {
@@ -73,6 +82,16 @@ public class RibbonProcessorFactory implements ProcessorFactory {
             if (config != null) {
                 IntrospectionSupport.getProperties(config, parameters, null);
             }
+
+            // component must either not be set, or if set then must be us
+            String component = config != null ? config.getComponent() : null;
+            if (component == null && configRef != null) {
+                component = configRef.getComponent();
+            }
+            if (component != null && !"ribbon".equals(component)) {
+                return null;
+            }
+
             // and set them on the kubernetes configuration class
             RibbonConfiguration rc = new RibbonConfiguration();
             IntrospectionSupport.setProperties(rc, parameters);

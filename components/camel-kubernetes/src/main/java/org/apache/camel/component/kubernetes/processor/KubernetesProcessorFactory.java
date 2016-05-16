@@ -18,6 +18,7 @@ package org.apache.camel.component.kubernetes.processor;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.Processor;
@@ -49,11 +50,6 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
         if (definition instanceof ServiceCallDefinition) {
             ServiceCallDefinition sc = (ServiceCallDefinition) definition;
 
-            // discovery must either not be set, or if set then must be us
-            if (sc.getDiscovery() != null && !"kubernetes".equals(sc.getDiscovery())) {
-                return null;
-            }
-
             String name = sc.getName();
             String namespace = sc.getNamespace();
             String uri = sc.getUri();
@@ -63,6 +59,28 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
             ServiceCallConfigurationDefinition configRef = null;
             if (sc.getServiceCallConfigurationRef() != null) {
                 configRef = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), sc.getServiceCallConfigurationRef(), ServiceCallConfigurationDefinition.class);
+            }
+
+            // if no configuration explicit configured then try to lookup in registry by type and find the best candidate to use
+            if (config == null && configRef == null) {
+                Set<ServiceCallConfigurationDefinition> set = routeContext.getCamelContext().getRegistry().findByType(ServiceCallConfigurationDefinition.class);
+                if (set != null) {
+                    for (ServiceCallConfigurationDefinition candidate : set) {
+                        if (candidate.getComponent() == null || "kubernetes".equals(candidate.getComponent())) {
+                            config = candidate;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // component must either not be set, or if set then must be us
+            String component = config != null ? config.getComponent() : null;
+            if (component == null && configRef != null) {
+                component = configRef.getComponent();
+            }
+            if (component != null && !"kubernetes".equals(component)) {
+                return null;
             }
 
             // extract the properties from the configuration from the model

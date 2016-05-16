@@ -5,27 +5,23 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p/>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p/>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.kubernetes.processor;
+package org.apache.camel.component.ribbon.processor;
 
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.impl.JndiRegistry;
 import org.apache.camel.model.ServiceCallConfigurationDefinition;
-import org.apache.camel.test.junit4.CamelTestSupport;
-import org.junit.Ignore;
-import org.junit.Test;
 
-@Ignore("Manual test")
-public class ServiceCallRouteTest extends CamelTestSupport {
+public class RibbonServiceCallRegistryRouteTest extends RibbonServiceCallRouteTest {
 
     private JndiRegistry registry;
 
@@ -35,36 +31,36 @@ public class ServiceCallRouteTest extends CamelTestSupport {
         return registry;
     }
 
-    @Test
-    public void testServiceCall() throws Exception {
-        getMockEndpoint("mock:result").expectedMessageCount(1);
-
-        template.sendBody("direct:start", "Hello World");
-
-        assertMockEndpointsSatisfied();
-    }
-
     @Override
     protected RoutesBuilder createRouteBuilder() throws Exception {
         return new RouteBuilder() {
             @Override
             public void configure() throws Exception {
+                // setup a static ribbon server list with these 2 servers to start with
+                RibbonServiceCallStaticServerListStrategy servers = new RibbonServiceCallStaticServerListStrategy();
+                servers.addServer("localhost", 9090);
+                servers.addServer("localhost", 9091);
+
+                // configure camel service call
                 ServiceCallConfigurationDefinition config = new ServiceCallConfigurationDefinition();
-                config.setMasterUrl("https://fabric8-master.vagrant.f8:8443");
-                config.setUsername("admin");
-                config.setPassword("admin");
-                config.setNamespace("default");
-                // lets use the built-in round robin (random is default)
-                config.setLoadBalancerRef("roundrobin");
+                config.setServerListStrategy(servers);
 
                 // add the config to the registry so service call can use it
                 registry.bind("myConfig", config);
 
                 from("direct:start")
-                    .serviceCall("cdi-camel-jetty")
-                    .serviceCall("cdi-camel-jetty")
-                    .to("mock:result");
+                        .serviceCall("myService")
+                        .to("mock:result");
+
+                from("jetty:http://localhost:9090")
+                    .to("mock:9090")
+                    .transform().constant("9090");
+
+                from("jetty:http://localhost:9091")
+                    .to("mock:9091")
+                    .transform().constant("9091");
             }
         };
     }
 }
+

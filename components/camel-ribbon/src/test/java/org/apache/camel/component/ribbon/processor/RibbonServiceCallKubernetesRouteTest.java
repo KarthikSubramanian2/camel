@@ -47,7 +47,7 @@ public class RibbonServiceCallKubernetesRouteTest extends CamelTestSupport {
                 config.setNamespace("default");
 
                 from("direct:start")
-                        .serviceCall("cdi-camel-jetty", null, config)
+                        .serviceCall("cdi-camel-jetty")
                         .to("mock:result");
             }
         };

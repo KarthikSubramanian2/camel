@@ -16,12 +16,8 @@
  */
 package org.apache.camel.component.ribbon.processor;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.model.ServiceCallConfigurationDefinition;
 import org.apache.camel.test.junit4.CamelTestSupport;
 import org.junit.Test;
 
@@ -47,17 +43,12 @@ public class RibbonServiceCallRouteTest extends CamelTestSupport {
             @Override
             public void configure() throws Exception {
                 // setup a static ribbon server list with these 2 servers to start with
-                List<RibbonServer> servers = new ArrayList<>();
-                servers.add(new RibbonServer("localhost", 9090));
-                servers.add(new RibbonServer("localhost", 9091));
-                RibbonServiceCallStaticServerListStrategy list = new RibbonServiceCallStaticServerListStrategy(servers);
-
-                // configure camel service call
-                ServiceCallConfigurationDefinition config = new ServiceCallConfigurationDefinition();
-                config.setServerListStrategy(list);
+                RibbonServiceCallStaticServerListStrategy servers = new RibbonServiceCallStaticServerListStrategy();
+                servers.addServer("localhost", 9090);
+                servers.addServer("localhost", 9091);
 
                 from("direct:start")
-                        .serviceCall("myService", null, config)
+                        .serviceCall().name("myService").serviceCallConfiguration().serverListStrategy(servers).end()
                         .to("mock:result");
 
                 from("jetty:http://localhost:9090")
