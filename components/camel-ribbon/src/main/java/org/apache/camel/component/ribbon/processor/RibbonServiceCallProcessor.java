@@ -64,7 +64,7 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
     private ServiceCallLoadBalancer<RibbonServer> loadBalancer;
     private ZoneAwareLoadBalancer<RibbonServer> ribbonLoadBalancer;
     private IRule rule;
-    private final ServiceCallExpression serviceCallExpression;
+    private final RibbonServiceCallExpression serviceCallExpression;
     private SendDynamicProcessor processor;
 
     // TODO: allow to plugin custom load balancer like ribbon
@@ -94,7 +94,7 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
         this.uri = uri;
         this.exchangePattern = exchangePattern;
         this.configuration = configuration;
-        this.serviceCallExpression = new ServiceCallExpression(this.name, this.scheme, this.contextPath, this.uri);
+        this.serviceCallExpression = new RibbonServiceCallExpression(this.name, this.scheme, this.contextPath, this.uri);
     }
 
     @Override

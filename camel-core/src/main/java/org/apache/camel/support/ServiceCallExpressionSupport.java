@@ -5,46 +5,50 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- * <p/>
- * http://www.apache.org/licenses/LICENSE-2.0
- * <p/>
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.ribbon.processor;
+package org.apache.camel.support;
 
 import org.apache.camel.Exchange;
-import org.apache.camel.component.ribbon.RibbonConstants;
-import org.apache.camel.support.ExpressionAdapter;
-import org.apache.camel.util.ExchangeHelper;
 import org.apache.camel.util.ObjectHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ServiceCallExpression extends ExpressionAdapter {
+/**
+ * Support class for custom implementations of {@link org.apache.camel.model.ServiceCallDefinition ServiceCall EIP} components.
+ */
+public abstract class ServiceCallExpressionSupport extends ExpressionAdapter {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ServiceCallExpression.class);
+    private static final Logger LOG = LoggerFactory.getLogger(ServiceCallExpressionSupport.class);
 
     private final String name;
     private final String scheme;
     private final String contextPath;
     private final String uri;
 
-    public ServiceCallExpression(String name, String scheme, String contextPath, String uri) {
+    public ServiceCallExpressionSupport(String name, String scheme, String contextPath, String uri) {
         this.name = name;
         this.scheme = scheme;
         this.contextPath = contextPath;
         this.uri = uri;
     }
 
+    public abstract String getIp(Exchange exchange) throws Exception;
+
+    public abstract int getPort(Exchange exchange) throws Exception;
+
     @Override
     public Object evaluate(Exchange exchange) {
         try {
-            String ip = ExchangeHelper.getMandatoryHeader(exchange, RibbonConstants.RIBBON_SERVER_IP, String.class);
-            int port = ExchangeHelper.getMandatoryHeader(exchange, RibbonConstants.RIBBON_SERVER_PORT, int.class);
+            String ip = getIp(exchange);
+            int port = getPort(exchange);
             return buildCamelEndpointUri(ip, port, name, uri, contextPath, scheme);
         } catch (Exception e) {
             throw ObjectHelper.wrapRuntimeCamelException(e);

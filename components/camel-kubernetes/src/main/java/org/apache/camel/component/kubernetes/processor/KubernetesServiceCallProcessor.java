@@ -59,12 +59,10 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
     private final String uri;
     private final ExchangePattern exchangePattern;
     private final KubernetesConfiguration configuration;
+    private final KubernetesServiceCallExpression serviceCallExpression;
     private ServiceCallServerListStrategy<KubernetesServer> serverListStrategy;
     private ServiceCallLoadBalancer<KubernetesServer> loadBalancer;
-    private final ServiceCallExpression serviceCallExpression;
     private SendDynamicProcessor processor;
-
-    // TODO: allow to plugin custom load balancer like ribbon
 
     public KubernetesServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, KubernetesConfiguration configuration) {
         // setup from the provided name which can contain scheme and context-path information as well
@@ -91,7 +89,7 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
         this.uri = uri;
         this.exchangePattern = exchangePattern;
         this.configuration = configuration;
-        this.serviceCallExpression = new ServiceCallExpression(this.name, this.scheme, this.contextPath, this.uri);
+        this.serviceCallExpression = new KubernetesServiceCallExpression(this.name, this.scheme, this.contextPath, this.uri);
     }
 
     @Override

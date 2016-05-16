@@ -16,17 +16,25 @@
  */
 package org.apache.camel.component.ribbon.processor;
 
-import com.netflix.loadbalancer.Server;
-import org.apache.camel.spi.ServiceCallServer;
+import org.apache.camel.Exchange;
+import org.apache.camel.component.ribbon.RibbonConstants;
+import org.apache.camel.support.ServiceCallExpressionSupport;
+import org.apache.camel.util.ExchangeHelper;
 
-public class RibbonServer extends Server implements ServiceCallServer {
+public class RibbonServiceCallExpression extends ServiceCallExpressionSupport {
 
-    public RibbonServer(String host, int port) {
-        super(host, port);
+    public RibbonServiceCallExpression(String name, String scheme, String contextPath, String uri) {
+        super(name, scheme, contextPath, uri);
     }
 
     @Override
-    public String getIp() {
-        return getHost();
+    public String getIp(Exchange exchange) throws Exception {
+        return ExchangeHelper.getMandatoryHeader(exchange, RibbonConstants.RIBBON_SERVER_IP, String.class);
     }
+
+    @Override
+    public int getPort(Exchange exchange) throws Exception {
+        return ExchangeHelper.getMandatoryHeader(exchange, RibbonConstants.RIBBON_SERVER_PORT, int.class);
+    }
+
 }
