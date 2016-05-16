@@ -55,6 +55,7 @@ import org.apache.camel.model.RestContextRefDefinition;
 import org.apache.camel.model.RouteBuilderDefinition;
 import org.apache.camel.model.RouteContextRefDefinition;
 import org.apache.camel.model.RouteDefinition;
+import org.apache.camel.model.ServiceCallConfigurationDefinition;
 import org.apache.camel.model.ThreadPoolProfileDefinition;
 import org.apache.camel.model.dataformat.DataFormatsDefinition;
 import org.apache.camel.model.rest.RestConfigurationDefinition;
@@ -152,6 +153,7 @@ public class CamelContextFactoryBean extends AbstractCamelContextFactoryBean<Spr
     private CamelJMXAgentDefinition camelJMXAgent;
     @XmlElements({
             @XmlElement(name = "hystrixConfiguration", type = HystrixConfigurationDefinition.class, required = false),
+            @XmlElement(name = "serviceCallConfiguration", type = ServiceCallConfigurationDefinition.class, required = false),
             @XmlElement(name = "template", type = CamelProducerTemplateFactoryBean.class, required = false),
             @XmlElement(name = "consumerTemplate", type = CamelConsumerTemplateFactoryBean.class, required = false),
             @XmlElement(name = "proxy", type = CamelProxyFactoryDefinition.class, required = false),
