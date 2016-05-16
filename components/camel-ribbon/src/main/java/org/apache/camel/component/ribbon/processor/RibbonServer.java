@@ -29,4 +29,5 @@ public class RibbonServer extends Server implements ServiceCallServer {
     public String getIp() {
         return getHost();
     }
+
 }

@@ -16,9 +16,12 @@
  */
 package org.apache.camel.model;
 
+import java.util.ArrayList;
+import java.util.List;
 import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
+import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
 import javax.xml.bind.annotation.XmlTransient;
 
@@ -73,6 +76,8 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
     private String serverListStrategyRef;
     @XmlTransient
     private ServiceCallServerListStrategy serverListStrategy;
+    @XmlElement(name = "clientProperty") @Metadata(label = "advanced")
+    private List<PropertyDefinition> properties;
 
     public ServiceCallConfigurationDefinition() {
     }
@@ -245,6 +250,14 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
         this.serverListStrategy = serverListStrategy;
     }
 
+    public List<PropertyDefinition> getProperties() {
+        return properties;
+    }
+
+    public void setProperties(List<PropertyDefinition> properties) {
+        this.properties = properties;
+    }
+
     // Fluent API
     // -------------------------------------------------------------------------
 
@@ -405,6 +418,23 @@ public class ServiceCallConfigurationDefinition extends IdentifiedType {
      */
     public ServiceCallConfigurationDefinition serverListStrategy(ServiceCallServerListStrategy serverListStrategy) {
         setServerListStrategy(serverListStrategy);
+        return this;
+    }
+
+    /**
+     * Adds a custom client property to use.
+     * <p/>
+     * These properties are specific to what service call implementation are in use. For example if using ribbon, then
+     * the client properties are define in com.netflix.client.config.CommonClientConfigKey.
+     */
+    public ServiceCallConfigurationDefinition clientProperty(String key, String value) {
+        if (properties == null) {
+            properties = new ArrayList<>();
+        }
+        PropertyDefinition prop = new PropertyDefinition();
+        prop.setKey(key);
+        prop.setValue(value);
+        properties.add(prop);
         return this;
     }
 

@@ -22,21 +22,11 @@
        http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd
     ">
 
-  <!-- TODO: should be nicer to do in XML-->
   <!-- setup a static ribbon server list with these 2 servers to start with -->
-  <bean id="servers" class="org.apache.camel.component.ribbon.processor.RibbonServiceCallStaticServerListStrategy">
-    <constructor-arg index="0">
-      <list>
-        <bean class="org.apache.camel.component.ribbon.processor.RibbonServer">
-          <constructor-arg index="0" value="localhost"/>
-          <constructor-arg index="1" value="9090"/>
-        </bean>
-        <bean class="org.apache.camel.component.ribbon.processor.RibbonServer">
-          <constructor-arg index="0" value="localhost"/>
-          <constructor-arg index="1" value="9091"/>
-        </bean>
-      </list>
-    </constructor-arg>
+  <!-- call the build method with the argument below -->
+  <bean id="servers" class="org.apache.camel.component.ribbon.processor.RibbonServiceCallStaticServerListStrategy"
+        factory-method="build">
+    <constructor-arg index="0" value="localhost:9090,localhost:9091"/>
   </bean>
 
   <camelContext xmlns="http://camel.apache.org/schema/spring">

@@ -23,11 +23,24 @@ import com.netflix.client.config.IClientConfig;
 import com.netflix.loadbalancer.AbstractServerList;
 import com.netflix.loadbalancer.ServerList;
 import org.apache.camel.spi.ServiceCallServerListStrategy;
+import org.apache.camel.util.ObjectHelper;
 
 public class RibbonServiceCallStaticServerListStrategy extends AbstractServerList<RibbonServer> implements ServerList<RibbonServer>, ServiceCallServerListStrategy<RibbonServer> {
 
     private IClientConfig clientConfig;
     private final List<RibbonServer> servers = new ArrayList<>();
+
+    public static RibbonServiceCallStaticServerListStrategy build(String servers) {
+        RibbonServiceCallStaticServerListStrategy answer = new RibbonServiceCallStaticServerListStrategy();
+        String[] parts = servers.split(",");
+        for (String part : parts) {
+            String host = ObjectHelper.before(part, ":");
+            String port = ObjectHelper.after(part, ":");
+            int num = Integer.valueOf(port);
+            answer.addServer(host, num);
+        }
+        return answer;
+    }
 
     public RibbonServiceCallStaticServerListStrategy() {
     }
@@ -42,6 +55,10 @@ public class RibbonServiceCallStaticServerListStrategy extends AbstractServerLis
 
     public void addServer(String host, int port) {
         servers.add(new RibbonServer(host, port));
+    }
+
+    public void removeServer(String host, int port) {
+        servers.remove(new RibbonServer(host, port));
     }
 
     @Override

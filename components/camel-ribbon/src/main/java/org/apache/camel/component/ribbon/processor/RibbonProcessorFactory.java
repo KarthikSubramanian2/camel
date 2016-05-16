@@ -25,6 +25,7 @@ import org.apache.camel.ExchangePattern;
 import org.apache.camel.Processor;
 import org.apache.camel.component.ribbon.RibbonConfiguration;
 import org.apache.camel.model.ProcessorDefinition;
+import org.apache.camel.model.PropertyDefinition;
 import org.apache.camel.model.ServiceCallConfigurationDefinition;
 import org.apache.camel.model.ServiceCallDefinition;
 import org.apache.camel.spi.ProcessorFactory;
@@ -124,13 +125,37 @@ public class RibbonProcessorFactory implements ProcessorFactory {
                 throw new IllegalArgumentException("Load balancer must be of type: " + IRule.class + " but is of type: " + lb.getClass().getName());
             }
 
+            Map<String, String> properties = configureProperties(routeContext, config, configRef);
+
             RibbonServiceCallProcessor processor = new RibbonServiceCallProcessor(name, namespace, uri, mep, rc);
             processor.setRule((IRule) lb);
             processor.setServerListStrategy(sl);
+            processor.setRibbonClientConfig(properties);
             return processor;
         } else {
             return null;
         }
+    }
+
+    private Map<String, String> configureProperties(RouteContext routeContext, ServiceCallConfigurationDefinition config, ServiceCallConfigurationDefinition configRef) throws Exception {
+        Map<String, String> answer = new HashMap<>();
+        if (config != null && config.getProperties() != null) {
+            for (PropertyDefinition prop : config.getProperties()) {
+                // support property placeholders
+                String key = CamelContextHelper.parseText(routeContext.getCamelContext(), prop.getKey());
+                String value = CamelContextHelper.parseText(routeContext.getCamelContext(), prop.getValue());
+                answer.put(key, value);
+            }
+        }
+        if (configRef != null && configRef.getProperties() != null) {
+            for (PropertyDefinition prop : configRef.getProperties()) {
+                // support property placeholders
+                String key = CamelContextHelper.parseText(routeContext.getCamelContext(), prop.getKey());
+                String value = CamelContextHelper.parseText(routeContext.getCamelContext(), prop.getValue());
+                answer.put(key, value);
+            }
+        }
+        return answer;
     }
 
     private Object configureLoadBalancer(RouteContext routeContext, ServiceCallDefinition sd) {

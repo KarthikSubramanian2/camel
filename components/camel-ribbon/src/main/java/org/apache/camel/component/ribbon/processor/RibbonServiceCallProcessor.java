@@ -16,13 +16,18 @@
  */
 package org.apache.camel.component.ribbon.processor;
 
+import java.util.Map;
 import java.util.concurrent.RejectedExecutionException;
 
+import com.netflix.client.config.IClientConfig;
+import com.netflix.client.config.IClientConfigKey;
+import com.netflix.loadbalancer.DummyPing;
 import com.netflix.loadbalancer.IRule;
-import com.netflix.loadbalancer.LoadBalancerBuilder;
+import com.netflix.loadbalancer.PollingServerListUpdater;
 import com.netflix.loadbalancer.RoundRobinRule;
 import com.netflix.loadbalancer.Server;
 import com.netflix.loadbalancer.ServerList;
+import com.netflix.loadbalancer.ServerListUpdater;
 import com.netflix.loadbalancer.ZoneAwareLoadBalancer;
 import org.apache.camel.AsyncCallback;
 import org.apache.camel.AsyncProcessor;
@@ -63,6 +68,7 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
     private ZoneAwareLoadBalancer<RibbonServer> ribbonLoadBalancer;
     private IRule rule;
     private final RibbonServiceCallExpression serviceCallExpression;
+    private Map<String, String> ribbonClientConfig;
     private SendDynamicProcessor processor;
 
     public RibbonServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, RibbonConfiguration configuration) {
@@ -169,6 +175,14 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
         this.rule = rule;
     }
 
+    public Map<String, String> getRibbonClientConfig() {
+        return ribbonClientConfig;
+    }
+
+    public void setRibbonClientConfig(Map<String, String> ribbonClientConfig) {
+        this.ribbonClientConfig = ribbonClientConfig;
+    }
+
     @Override
     @SuppressWarnings("unchecked")
     protected void doStart() throws Exception {
@@ -187,12 +201,21 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
             rule = new RoundRobinRule();
         }
 
-        ribbonLoadBalancer = LoadBalancerBuilder.<RibbonServer>newBuilder()
-                .withDynamicServerList((ServerList<RibbonServer>) serverListStrategy)
-                .withRule(rule)
-                .buildDynamicServerListLoadBalancer();
+        // setup client config
+        IClientConfig config = IClientConfig.Builder.newBuilder().build();
+        if (ribbonClientConfig != null) {
+            for (Map.Entry<String, String> entry : ribbonClientConfig.entrySet()) {
+                IClientConfigKey key = IClientConfigKey.Keys.valueOf(entry.getKey());
+                String value = entry.getValue();
+                LOG.debug("RibbonClientConfig: {}={}", key.key(), value);
+                config.set(key, entry.getValue());
+            }
+        }
 
-        LOG.info("RibbonServiceCall at namespace: {} with service name: {} is using load balancer: {} and service discovery: {}", namespace, name, ribbonLoadBalancer, serverListStrategy);
+        ServerListUpdater updater = new PollingServerListUpdater(config);
+        ribbonLoadBalancer = new ZoneAwareLoadBalancer<>(config, rule, new DummyPing(), (ServerList<RibbonServer>) serverListStrategy, null, updater);
+
+        LOG.info("RibbonServiceCall at namespace: {} with service name: {} is using load balancer: {} and server list: {}", namespace, name, ribbonLoadBalancer, serverListStrategy);
 
         processor = new SendDynamicProcessor(uri, serviceCallExpression);
         processor.setCamelContext(getCamelContext());
