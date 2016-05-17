@@ -61,7 +61,6 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
     private final String name;
     private final String scheme;
     private final String contextPath;
-    private final String namespace;
     private final String uri;
     private final ExchangePattern exchangePattern;
     private final RibbonConfiguration configuration;
@@ -73,7 +72,7 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
     private Map<String, String> ribbonClientConfig;
     private SendDynamicProcessor processor;
 
-    public RibbonServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, RibbonConfiguration configuration) {
+    public RibbonServiceCallProcessor(String name, String uri, ExchangePattern exchangePattern, RibbonConfiguration configuration) {
         // setup from the provided name which can contain scheme and context-path information as well
         String serviceName;
         if (name.contains("/")) {
@@ -94,7 +93,6 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
             this.name = serviceName;
         }
 
-        this.namespace = namespace;
         this.uri = uri;
         this.exchangePattern = exchangePattern;
         this.configuration = configuration;
@@ -115,7 +113,7 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
             // let the client load balancer chose which server to use
             server = ribbonLoadBalancer.chooseServer();
             if (server == null) {
-                exchange.setException(new RejectedExecutionException("No active services with name " + name + " in namespace " + namespace));
+                exchange.setException(new RejectedExecutionException("No active services with name " + name));
             }
         } catch (Throwable e) {
             exchange.setException(e);
@@ -231,7 +229,7 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
         ServerListUpdater updater = new PollingServerListUpdater(config);
         ribbonLoadBalancer = new ZoneAwareLoadBalancer<>(config, rule, ping, (ServerList<RibbonServer>) serverListStrategy, null, updater);
 
-        LOG.info("RibbonServiceCall at namespace: {} with service name: {} is using load balancer: {} and server list: {}", namespace, name, ribbonLoadBalancer, serverListStrategy);
+        LOG.info("RibbonServiceCall with service name: {} is using load balancer: {} and server list: {}", name, ribbonLoadBalancer, serverListStrategy);
 
         processor = new SendDynamicProcessor(uri, serviceCallExpression);
         processor.setCamelContext(getCamelContext());

@@ -51,7 +51,6 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
             ServiceCallDefinition sc = (ServiceCallDefinition) definition;
 
             String name = sc.getName();
-            String namespace = sc.getNamespace();
             String uri = sc.getUri();
             ExchangePattern mep = sc.getPattern();
 
@@ -95,10 +94,8 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
             KubernetesConfiguration kc = new KubernetesConfiguration();
             IntrospectionSupport.setProperties(kc, parameters);
 
-            // use namespace from config if not provided
-            if (namespace == null) {
-                namespace = kc.getNamespace();
-            }
+            // use namespace from config
+            String namespace = kc.getNamespace();
 
             // lookup the load balancer to use (configured on EIP takes precedence vs configured on configuration)
             ServiceCallLoadBalancer lb = configureLoadBalancer(routeContext, sc);

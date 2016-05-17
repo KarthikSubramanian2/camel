@@ -40,16 +40,14 @@ import org.apache.camel.util.CamelContextHelper;
 @XmlAccessorType(XmlAccessType.FIELD)
 public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinition> {
 
-    @XmlElement
-    private ServiceCallConfigurationDefinition serviceCallConfiguration;
+    @XmlAttribute @Metadata(required = "true")
+    private String name;
     @XmlAttribute @Metadata(required = "true")
     private String uri;
     @XmlAttribute
     private ExchangePattern pattern;
-    @XmlAttribute @Metadata(defaultValue = "default")
-    private String namespace;
-    @XmlAttribute @Metadata(required = "true")
-    private String name;
+    @XmlElement
+    private ServiceCallConfigurationDefinition serviceCallConfiguration;
     @XmlAttribute
     private String serviceCallConfigurationRef;
     @XmlAttribute
@@ -98,14 +96,6 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
      */
     public ServiceCallDefinition pattern(ExchangePattern pattern) {
         setPattern(pattern);
-        return this;
-    }
-
-    /**
-     * Sets the namespace of the service to use
-     */
-    public ServiceCallDefinition namespace(String namespace) {
-        setNamespace(namespace);
         return this;
     }
 
@@ -202,14 +192,6 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public String getNamespace() {
-        return namespace;
-    }
-
-    public void setNamespace(String namespace) {
-        this.namespace = namespace;
     }
 
     public ExchangePattern getPattern() {

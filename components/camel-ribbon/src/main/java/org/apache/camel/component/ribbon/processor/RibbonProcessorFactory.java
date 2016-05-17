@@ -52,7 +52,6 @@ public class RibbonProcessorFactory implements ProcessorFactory {
             ServiceCallDefinition sc = (ServiceCallDefinition) definition;
 
             String name = sc.getName();
-            String namespace = sc.getNamespace();
             String uri = sc.getUri();
             ExchangePattern mep = sc.getPattern();
 
@@ -97,11 +96,6 @@ public class RibbonProcessorFactory implements ProcessorFactory {
             RibbonConfiguration rc = new RibbonConfiguration();
             IntrospectionSupport.setProperties(rc, parameters);
 
-            // use namespace from config if not provided
-            if (namespace == null) {
-                namespace = rc.getNamespace();
-            }
-
             // lookup the load balancer to use (configured on EIP takes precedence vs configured on configuration)
             Object lb = configureLoadBalancer(routeContext, sc);
             if (lb == null && config != null) {
@@ -127,7 +121,7 @@ public class RibbonProcessorFactory implements ProcessorFactory {
 
             Map<String, String> properties = configureProperties(routeContext, config, configRef);
 
-            RibbonServiceCallProcessor processor = new RibbonServiceCallProcessor(name, namespace, uri, mep, rc);
+            RibbonServiceCallProcessor processor = new RibbonServiceCallProcessor(name, uri, mep, rc);
             processor.setRule((IRule) lb);
             processor.setServerListStrategy(sl);
             processor.setRibbonClientConfig(properties);
