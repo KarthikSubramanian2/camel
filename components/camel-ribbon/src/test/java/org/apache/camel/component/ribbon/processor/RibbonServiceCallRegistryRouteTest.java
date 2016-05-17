@@ -19,7 +19,7 @@ package org.apache.camel.component.ribbon.processor;
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.impl.JndiRegistry;
-import org.apache.camel.model.ServiceCallConfigurationDefinition;
+import org.apache.camel.model.remote.ServiceCallConfigurationDefinition;
 
 public class RibbonServiceCallRegistryRouteTest extends RibbonServiceCallRouteTest {
 

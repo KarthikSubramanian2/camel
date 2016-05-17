@@ -74,8 +74,6 @@ RoutesDefinition
 RoutingSlipDefinition
 SamplingDefinition
 ScriptDefinition
-ServiceCallDefinition
-ServiceCallConfigurationDefinition
 SetBodyDefinition
 SetExchangePatternDefinition
 SetFaultBodyDefinition

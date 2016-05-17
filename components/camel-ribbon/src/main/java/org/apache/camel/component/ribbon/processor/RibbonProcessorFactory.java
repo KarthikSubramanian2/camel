@@ -26,8 +26,8 @@ import org.apache.camel.Processor;
 import org.apache.camel.component.ribbon.RibbonConfiguration;
 import org.apache.camel.model.ProcessorDefinition;
 import org.apache.camel.model.PropertyDefinition;
-import org.apache.camel.model.ServiceCallConfigurationDefinition;
-import org.apache.camel.model.ServiceCallDefinition;
+import org.apache.camel.model.remote.ServiceCallConfigurationDefinition;
+import org.apache.camel.model.remote.ServiceCallDefinition;
 import org.apache.camel.spi.ProcessorFactory;
 import org.apache.camel.spi.RouteContext;
 import org.apache.camel.spi.ServiceCallServerListStrategy;
@@ -67,7 +67,7 @@ public class RibbonProcessorFactory implements ProcessorFactory {
                 Set<ServiceCallConfigurationDefinition> set = routeContext.getCamelContext().getRegistry().findByType(ServiceCallConfigurationDefinition.class);
                 if (set != null) {
                     for (ServiceCallConfigurationDefinition candidate : set) {
-                        if (candidate.getComponent() == null || "kubernetes".equals(candidate.getComponent())) {
+                        if (candidate.getComponent() == null || "ribbon".equals(candidate.getComponent())) {
                             config = candidate;
                             break;
                         }

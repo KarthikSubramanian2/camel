@@ -17,12 +17,13 @@
 package org.apache.camel.support;
 
 import org.apache.camel.Exchange;
+import org.apache.camel.model.remote.ServiceCallDefinition;
 import org.apache.camel.util.ObjectHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Support class for custom implementations of {@link org.apache.camel.model.ServiceCallDefinition ServiceCall EIP} components.
+ * Support class for custom implementations of {@link ServiceCallDefinition ServiceCall EIP} components.
  */
 public abstract class ServiceCallExpressionSupport extends ExpressionAdapter {
 

@@ -14,17 +14,21 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.ribbon.processor;
+package org.apache.camel.component.kubernetes.processor;
 
-import org.apache.camel.RoutesBuilder;
-import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.model.remote.ServiceCallConfigurationDefinition;
-import org.apache.camel.test.junit4.CamelTestSupport;
+import org.apache.camel.test.spring.CamelSpringTestSupport;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.springframework.context.support.AbstractApplicationContext;
+import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 @Ignore("Manual test")
-public class RibbonServiceCallKubernetesRouteTest extends CamelTestSupport {
+public class SpringServiceCallRouteTest extends CamelSpringTestSupport {
+
+    @Override
+    protected AbstractApplicationContext createApplicationContext() {
+        return new ClassPathXmlApplicationContext("org/apache/camel/component/kubernetes/processor/SpringServiceCallRouteTest.xml");
+    }
 
     @Test
     public void testServiceCall() throws Exception {
@@ -34,23 +38,4 @@ public class RibbonServiceCallKubernetesRouteTest extends CamelTestSupport {
 
         assertMockEndpointsSatisfied();
     }
-
-    @Override
-    protected RoutesBuilder createRouteBuilder() throws Exception {
-        return new RouteBuilder() {
-            @Override
-            public void configure() throws Exception {
-                ServiceCallConfigurationDefinition config = new ServiceCallConfigurationDefinition();
-                config.setMasterUrl("https://fabric8-master.vagrant.f8:8443");
-                config.setUsername("admin");
-                config.setPassword("admin");
-                config.setNamespace("default");
-
-                from("direct:start")
-                        .serviceCall("cdi-camel-jetty")
-                        .to("mock:result");
-            }
-        };
-    }
 }
-
