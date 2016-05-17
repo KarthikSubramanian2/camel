@@ -19,7 +19,7 @@ package org.apache.camel.component.ribbon.processor;
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.impl.JndiRegistry;
-import org.apache.camel.model.remote.ServiceCallConfigurationDefinition;
+import org.apache.camel.model.remote.RibbonConfigurationDefinition;
 
 public class RibbonServiceCallRegistryRouteTest extends RibbonServiceCallRouteTest {
 
@@ -42,7 +42,7 @@ public class RibbonServiceCallRegistryRouteTest extends RibbonServiceCallRouteTe
                 servers.addServer("localhost", 9091);
 
                 // configure camel service call
-                ServiceCallConfigurationDefinition config = new ServiceCallConfigurationDefinition();
+                RibbonConfigurationDefinition config = new RibbonConfigurationDefinition();
                 config.setServerListStrategy(servers);
 
                 // add the config to the registry so service call can use it

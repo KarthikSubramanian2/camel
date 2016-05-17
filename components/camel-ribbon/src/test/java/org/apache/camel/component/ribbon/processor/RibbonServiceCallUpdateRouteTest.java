@@ -73,7 +73,7 @@ public class RibbonServiceCallUpdateRouteTest extends CamelTestSupport {
                 from("direct:start")
                         .serviceCall().name("myService")
                             // lets update quick so we do not have to sleep so much in the tests
-                            .serviceCallConfiguration().serverListStrategy(servers).clientProperty("ServerListRefreshInterval", "250").end()
+                            .ribbonConfiguration().serverListStrategy(servers).clientProperty("ServerListRefreshInterval", "250").end()
                         .to("mock:result");
 
                 from("jetty:http://localhost:9090").routeId("9090")

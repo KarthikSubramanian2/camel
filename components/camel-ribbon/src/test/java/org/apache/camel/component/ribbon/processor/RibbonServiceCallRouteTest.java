@@ -48,7 +48,7 @@ public class RibbonServiceCallRouteTest extends CamelTestSupport {
                 servers.addServer("localhost", 9091);
 
                 from("direct:start")
-                        .serviceCall().name("myService").serviceCallConfiguration().serverListStrategy(servers).end()
+                        .serviceCall().name("myService").ribbonConfiguration().serverListStrategy(servers).end()
                         .to("mock:result");
 
                 from("jetty:http://localhost:9090")

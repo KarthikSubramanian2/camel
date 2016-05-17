@@ -126,13 +126,23 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
     }
 
     /**
-     * Configures the Service Call EIP
+     * Configures the Service Call EIP using Kubernetes
      * <p/>
      * Use <tt>end</tt> when configuration is complete, to return back to the Service Call EIP.
      */
-    public ServiceCallConfigurationDefinition serviceCallConfiguration() {
-        serviceCallConfiguration = new ServiceCallConfigurationDefinition(this);
-        return serviceCallConfiguration;
+    public KubernetesConfigurationDefinition kubernetesConfiguration() {
+        serviceCallConfiguration = new KubernetesConfigurationDefinition(this);
+        return (KubernetesConfigurationDefinition) serviceCallConfiguration;
+    }
+
+    /**
+     * Configures the Service Call EIP using Ribbon
+     * <p/>
+     * Use <tt>end</tt> when configuration is complete, to return back to the Service Call EIP.
+     */
+    public RibbonConfigurationDefinition ribbonConfiguration() {
+        serviceCallConfiguration = new RibbonConfigurationDefinition(this);
+        return (RibbonConfigurationDefinition) serviceCallConfiguration;
     }
 
     /**

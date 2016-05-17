@@ -25,8 +25,8 @@
   <camelContext xmlns="http://camel.apache.org/schema/spring">
 
     <!-- service call configuration to use ribbon -->
-    <serviceCallConfiguration id="myConfig" masterUrl="https://fabric8-master.vagrant.f8:8443"
-                              username="admin" password="admin" namespace="default" loadBalancerRef="roundrobin"/>
+    <kubernetesConfiguration id="myConfig" masterUrl="https://fabric8-master.vagrant.f8:8443"
+                             username="admin" password="admin" namespace="default" loadBalancerRef="roundrobin"/>
 
     <route>
       <from uri="direct:start"/>

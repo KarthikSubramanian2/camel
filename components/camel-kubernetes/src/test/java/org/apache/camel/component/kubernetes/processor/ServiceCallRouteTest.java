@@ -19,7 +19,7 @@ package org.apache.camel.component.kubernetes.processor;
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.impl.JndiRegistry;
-import org.apache.camel.model.remote.ServiceCallConfigurationDefinition;
+import org.apache.camel.model.remote.KubernetesConfigurationDefinition;
 import org.apache.camel.test.junit4.CamelTestSupport;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -49,7 +49,7 @@ public class ServiceCallRouteTest extends CamelTestSupport {
         return new RouteBuilder() {
             @Override
             public void configure() throws Exception {
-                ServiceCallConfigurationDefinition config = new ServiceCallConfigurationDefinition();
+                KubernetesConfigurationDefinition config = new KubernetesConfigurationDefinition();
                 config.setMasterUrl("https://fabric8-master.vagrant.f8:8443");
                 config.setUsername("admin");
                 config.setPassword("admin");
