@@ -218,7 +218,7 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
         }
 
         // setup client config
-        IClientConfig config = IClientConfig.Builder.newBuilder().build();
+        IClientConfig config = IClientConfig.Builder.newBuilder(name).build();
         if (ribbonClientConfig != null) {
             for (Map.Entry<String, String> entry : ribbonClientConfig.entrySet()) {
                 IClientConfigKey key = IClientConfigKey.Keys.valueOf(entry.getKey());
