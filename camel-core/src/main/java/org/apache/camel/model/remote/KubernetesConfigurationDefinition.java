@@ -38,7 +38,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     private String namespace;
     @XmlAttribute
     private String apiVersion;
-    @XmlAttribute @Metadata(defaultValue = "dns")
+    @XmlAttribute @Metadata(defaultValue = "environment")
     private String lookup;
     @XmlAttribute
     private String dnsDomain;
@@ -243,14 +243,15 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
 
     /**
      * How to perform service lookup. Possible values: client, dns, environment.
-     * When using dns the service name is resolved as <tt>name.namespace.service.dnsDomain</tt>.
      * <p/>
      * When using client, then the client queries the kubernetes master to obtain a list
      * of active pods that provides the service, and then random (or round robin) select a pod.
      * <p/>
+     * When using dns the service name is resolved as <tt>name.namespace.service.dnsDomain</tt>.
+     * <p/>
      * When using environment then environment variables are used to lookup the service.
      * <p/>
-     * By default dns is used.
+     * By default environment is used.
      */
     public KubernetesConfigurationDefinition lookup(String lookup) {
         setLookup(lookup);
