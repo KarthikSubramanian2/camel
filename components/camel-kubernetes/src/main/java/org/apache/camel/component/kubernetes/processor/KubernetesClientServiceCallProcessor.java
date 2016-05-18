@@ -19,10 +19,9 @@ package org.apache.camel.component.kubernetes.processor;
 import java.util.Collection;
 import java.util.concurrent.RejectedExecutionException;
 
+import io.fabric8.kubernetes.client.AutoAdaptableKubernetesClient;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.ConfigBuilder;
-import io.fabric8.openshift.client.DefaultOpenShiftClient;
-import io.fabric8.openshift.client.OpenShiftClient;
 import org.apache.camel.AsyncCallback;
 import org.apache.camel.AsyncProcessor;
 import org.apache.camel.CamelContext;
@@ -196,8 +195,7 @@ public class KubernetesClientServiceCallProcessor extends ServiceSupport impleme
         ServiceHelper.stopServices(processor, serverListStrategy);
     }
 
-    private OpenShiftClient createKubernetesClient() {
-        // TODO: need to use OpenShiftClient until fabric8-client can auto detect OS vs Kube environment
+    private AutoAdaptableKubernetesClient createKubernetesClient() {
         LOG.debug("Create Kubernetes client with the following Configuration: " + configuration.toString());
 
         ConfigBuilder builder = new ConfigBuilder();
@@ -242,7 +240,7 @@ public class KubernetesClientServiceCallProcessor extends ServiceSupport impleme
         }
 
         Config conf = builder.build();
-        return new DefaultOpenShiftClient(conf);
+        return new AutoAdaptableKubernetesClient(conf);
     }
 
 }

@@ -25,7 +25,7 @@ import io.fabric8.kubernetes.api.model.EndpointAddress;
 import io.fabric8.kubernetes.api.model.EndpointPort;
 import io.fabric8.kubernetes.api.model.EndpointSubset;
 import io.fabric8.kubernetes.api.model.Endpoints;
-import io.fabric8.openshift.client.OpenShiftClient;
+import io.fabric8.kubernetes.client.AutoAdaptableKubernetesClient;
 import org.apache.camel.spi.ServiceCallServerListStrategy;
 import org.apache.camel.support.ServiceSupport;
 import org.apache.camel.util.IOHelper;
@@ -44,9 +44,9 @@ public class KubernetesServiceCallServerListStrategy extends ServiceSupport impl
     private String name;
     private String namespace;
     private String portName;
-    private OpenShiftClient client;
+    private AutoAdaptableKubernetesClient client;
 
-    public KubernetesServiceCallServerListStrategy(String name, String namespace, String portName, OpenShiftClient client) {
+    public KubernetesServiceCallServerListStrategy(String name, String namespace, String portName, AutoAdaptableKubernetesClient client) {
         this.name = name;
         this.namespace = namespace;
         this.portName = portName;
@@ -62,7 +62,7 @@ public class KubernetesServiceCallServerListStrategy extends ServiceSupport impl
     public Collection<KubernetesServer> getUpdatedListOfServers() {
         LOG.debug("Discovering endpoints from namespace: {} with name: {}", namespace, name);
         Endpoints endpoints = client.endpoints().inNamespace(namespace).withName(name).get();
-        List<KubernetesServer> result = new ArrayList<KubernetesServer>();
+        List<KubernetesServer> result = new ArrayList<>();
         if (endpoints != null) {
             if (LOG.isDebugEnabled()) {
                 LOG.debug("Found {} endpoints in namespace: {} for name: {} and portName: {}", endpoints.getSubsets().size(), namespace, name, portName);
