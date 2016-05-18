@@ -126,11 +126,15 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
                 processor.setLoadBalancer(lb);
                 processor.setServerListStrategy(sl);
                 return processor;
-            } else if ("environment".equals(lookup)) {
-                return new KubernetesEnvironmentServiceCallProcessor(name, namespace, uri, mep);
+            } else if ("dns".equals(lookup)) {
+                String dnsDomain = config != null ? config.getDnsDomain() : null;
+                if (dnsDomain == null && configRef != null) {
+                    dnsDomain = configRef.getDnsDomain();
+                }
+                return new KubernetesDnsServiceCallProcessor(name, namespace, uri, mep, dnsDomain);
             } else {
-//                return new KubernetesDnsServiceCallProcessor(name, namespace, uri, mep);
-                return null;
+                // environment is default
+                return new KubernetesEnvironmentServiceCallProcessor(name, namespace, uri, mep);
             }
         } else {
             return null;

@@ -94,7 +94,7 @@ public abstract class ServiceCallExpressionSupport extends ExpressionAdapter {
             }
         }
 
-        LOG.debug("Camel endpoint uri: {} for calling service: {} + on server {}:{}", answer, name, ip, port);
+        LOG.debug("Camel endpoint uri: {} for calling service: {} on server {}:{}", answer, name, ip, port);
         return answer;
     }
 
