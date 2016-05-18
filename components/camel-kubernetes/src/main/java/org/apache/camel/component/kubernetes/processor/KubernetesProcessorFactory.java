@@ -24,6 +24,7 @@ import org.apache.camel.ExchangePattern;
 import org.apache.camel.Processor;
 import org.apache.camel.component.kubernetes.KubernetesConfiguration;
 import org.apache.camel.model.ProcessorDefinition;
+import org.apache.camel.model.remote.KubernetesConfigurationDefinition;
 import org.apache.camel.model.remote.ServiceCallConfigurationDefinition;
 import org.apache.camel.model.remote.ServiceCallDefinition;
 import org.apache.camel.spi.ProcessorFactory;
@@ -54,17 +55,17 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
             String uri = sc.getUri();
             ExchangePattern mep = sc.getPattern();
 
-            ServiceCallConfigurationDefinition config = sc.getServiceCallConfiguration();
-            ServiceCallConfigurationDefinition configRef = null;
+            KubernetesConfigurationDefinition config = (KubernetesConfigurationDefinition) sc.getServiceCallConfiguration();
+            KubernetesConfigurationDefinition configRef = null;
             if (sc.getServiceCallConfigurationRef() != null) {
-                configRef = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), sc.getServiceCallConfigurationRef(), ServiceCallConfigurationDefinition.class);
+                configRef = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), sc.getServiceCallConfigurationRef(), KubernetesConfigurationDefinition.class);
             }
 
             // if no configuration explicit configured then try to lookup in registry by type and find the best candidate to use
             if (config == null && configRef == null) {
-                Set<ServiceCallConfigurationDefinition> set = routeContext.getCamelContext().getRegistry().findByType(ServiceCallConfigurationDefinition.class);
+                Set<KubernetesConfigurationDefinition> set = routeContext.getCamelContext().getRegistry().findByType(KubernetesConfigurationDefinition.class);
                 if (set != null) {
-                    for (ServiceCallConfigurationDefinition candidate : set) {
+                    for (KubernetesConfigurationDefinition candidate : set) {
                         if (candidate.getComponent() == null || "kubernetes".equals(candidate.getComponent())) {
                             config = candidate;
                             break;
@@ -115,10 +116,22 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
                 sl = configureServerListStrategy(routeContext, configRef);
             }
 
-            KubernetesServiceCallProcessor processor = new KubernetesServiceCallProcessor(name, namespace, uri, mep, kc);
-            processor.setLoadBalancer(lb);
-            processor.setServerListStrategy(sl);
-            return processor;
+            String lookup = config != null ? config.getLookup() : null;
+            if (lookup == null && configRef != null) {
+                lookup = configRef.getLookup();
+            }
+
+            if ("client".equals(lookup)) {
+                KubernetesClientServiceCallProcessor processor = new KubernetesClientServiceCallProcessor(name, namespace, uri, mep, kc);
+                processor.setLoadBalancer(lb);
+                processor.setServerListStrategy(sl);
+                return processor;
+            } else if ("environment".equals(lookup)) {
+                return new KubernetesEnvironmentServiceCallProcessor(name, namespace, uri, mep);
+            } else {
+//                return new KubernetesDnsServiceCallProcessor(name, namespace, uri, mep);
+                return null;
+            }
         } else {
             return null;
         }

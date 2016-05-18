@@ -25,7 +25,7 @@ import org.junit.Ignore;
 import org.junit.Test;
 
 @Ignore("Manual test")
-public class ServiceCallRouteTest extends CamelTestSupport {
+public class ServiceCallClientRouteTest extends CamelTestSupport {
 
     private JndiRegistry registry;
 
@@ -50,10 +50,11 @@ public class ServiceCallRouteTest extends CamelTestSupport {
             @Override
             public void configure() throws Exception {
                 KubernetesConfigurationDefinition config = new KubernetesConfigurationDefinition();
-                config.setMasterUrl("https://fabric8-master.vagrant.f8:8443");
+                config.setMasterUrl("http://172.28.128.80:8080");
                 config.setUsername("admin");
                 config.setPassword("admin");
                 config.setNamespace("default");
+                config.setLookup("client");
                 // lets use the built-in round robin (random is default)
                 config.setLoadBalancerRef("roundrobin");
 

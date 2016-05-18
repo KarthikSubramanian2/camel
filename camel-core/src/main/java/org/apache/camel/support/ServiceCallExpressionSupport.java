@@ -24,6 +24,15 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Support class for custom implementations of {@link ServiceCallDefinition ServiceCall EIP} components.
+ * <p/>
+ * Below are some examples how to call a service and what Camel endpoint URI is constructed based on the input:
+ * <pre>
+     serviceCall("myService") -> http://hostname:port
+     serviceCall("myService/foo") -> http://hostname:port/foo
+     serviceCall("http:myService/foo") -> http:hostname:port/foo
+     serviceCall("myService", "http:myService.host:myService.port/foo") -> http:hostname:port/foo
+     serviceCall("myService", "netty4:tcp:myService?connectTimeout=1000") -> netty:tcp:hostname:port?connectTimeout=1000
+ * </pre>
  */
 public abstract class ServiceCallExpressionSupport extends ExpressionAdapter {
 
@@ -57,16 +66,11 @@ public abstract class ServiceCallExpressionSupport extends ExpressionAdapter {
     }
 
     protected static String buildCamelEndpointUri(String ip, int port, String name, String uri, String contextPath, String scheme) {
-        // serviceCall("myService") (will use http by default)
-        // serviceCall("myService/foo") (will use http by default)
-        // serviceCall("http:myService/foo")
-        // serviceCall("myService", "http:myService.host:myService.port/foo")
-        // serviceCall("myService", "netty4:tcp:myService?connectTimeout=1000")
-
         // build basic uri if none provided
         String answer = uri;
         if (answer == null) {
             if (scheme == null) {
+                // use http/https by default if no scheme has been configured
                 if (port == 443) {
                     scheme = "https";
                 } else {

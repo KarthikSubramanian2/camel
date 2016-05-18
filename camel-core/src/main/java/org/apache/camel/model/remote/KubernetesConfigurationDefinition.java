@@ -38,29 +38,33 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     private String namespace;
     @XmlAttribute
     private String apiVersion;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(defaultValue = "dns")
+    private String lookup;
+    @XmlAttribute
+    private String dnsDomain;
+    @XmlAttribute @Metadata(label = "client")
     private String username;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(label = "client")
     private String password;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(label = "client")
     private String oauthToken;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(label = "client")
     private String caCertData;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(label = "client")
     private String caCertFile;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(label = "client")
     private String clientCertData;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(label = "client")
     private String clientCertFile;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(label = "client")
     private String clientKeyAlgo;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(label = "client")
     private String clientKeyData;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(label = "client")
     private String clientKeyFile;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(label = "client")
     private String clientKeyPassphrase;
-    @XmlAttribute @Metadata(label = "security")
+    @XmlAttribute @Metadata(label = "client")
     private Boolean trustCerts;
 
     public KubernetesConfigurationDefinition() {
@@ -96,6 +100,22 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
 
     public void setApiVersion(String apiVersion) {
         this.apiVersion = apiVersion;
+    }
+
+    public String getLookup() {
+        return lookup;
+    }
+
+    public void setLookup(String lookup) {
+        this.lookup = lookup;
+    }
+
+    public String getDnsDomain() {
+        return dnsDomain;
+    }
+
+    public void setDnsDomain(String dnsDomain) {
+        this.dnsDomain = dnsDomain;
     }
 
     public String getUsername() {
@@ -198,7 +218,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     // -------------------------------------------------------------------------
 
     /**
-     * Sets the URL to the master
+     * Sets the URL to the master when using client lookup
      */
     public KubernetesConfigurationDefinition masterUrl(String masterUrl) {
         setMasterUrl(masterUrl);
@@ -206,7 +226,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the namespace to use
+     * Sets the namespace to use (required)
      */
     public KubernetesConfigurationDefinition namespace(String namespace) {
         setNamespace(namespace);
@@ -222,7 +242,31 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the username for authentication
+     * How to perform service lookup. Possible values: client, dns, environment.
+     * When using dns the service name is resolved as <tt>name.namespace.service.dnsDomain</tt>.
+     * <p/>
+     * When using client, then the client queries the kubernetes master to obtain a list
+     * of active pods that provides the service, and then random (or round robin) select a pod.
+     * <p/>
+     * When using environment then environment variables are used to lookup the service.
+     * <p/>
+     * By default dns is used.
+     */
+    public KubernetesConfigurationDefinition lookup(String lookup) {
+        setLookup(lookup);
+        return this;
+    }
+
+    /**
+     * Sets the DNS domain to use for DNS lookup.
+     */
+    public KubernetesConfigurationDefinition dnsDomain(String dnsDomain) {
+        setDnsDomain(dnsDomain);
+        return this;
+    }
+
+    /**
+     * Sets the username for authentication when using client lookup
      */
     public KubernetesConfigurationDefinition username(String username) {
         setUsername(username);
@@ -230,7 +274,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the password for authentication
+     * Sets the password for authentication when using client lookup
      */
     public KubernetesConfigurationDefinition password(String password) {
         setPassword(password);
@@ -238,7 +282,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the OAUTH token for authentication (instead of username/password)
+     * Sets the OAUTH token for authentication (instead of username/password) when using client lookup
      */
     public KubernetesConfigurationDefinition oauthToken(String oauthToken) {
         setOauthToken(oauthToken);
@@ -246,7 +290,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the Certificate Authority data
+     * Sets the Certificate Authority data when using client lookup
      */
     public KubernetesConfigurationDefinition caCertData(String caCertData) {
         setCaCertData(caCertData);
@@ -254,7 +298,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the Certificate Authority data that are loaded from the file
+     * Sets the Certificate Authority data that are loaded from the file when using client lookup
      */
     public KubernetesConfigurationDefinition caCertFile(String caCertFile) {
         setCaCertFile(caCertFile);
@@ -262,7 +306,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the Client Certificate data
+     * Sets the Client Certificate data when using client lookup
      */
     public KubernetesConfigurationDefinition clientCertData(String clientCertData) {
         setClientCertData(clientCertData);
@@ -270,7 +314,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the Client Certificate data that are loaded from the file
+     * Sets the Client Certificate data that are loaded from the file when using client lookup
      */
     public KubernetesConfigurationDefinition clientCertFile(String clientCertFile) {
         setClientCertFile(clientCertFile);
@@ -278,7 +322,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the Client Keystore algorithm, such as RSA.
+     * Sets the Client Keystore algorithm, such as RSA when using client lookup
      */
     public KubernetesConfigurationDefinition clientKeyAlgo(String clientKeyAlgo) {
         setClientKeyAlgo(clientKeyAlgo);
@@ -286,7 +330,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the Client Keystore data
+     * Sets the Client Keystore data when using client lookup
      */
     public KubernetesConfigurationDefinition clientKeyData(String clientKeyData) {
         setClientKeyData(clientKeyData);
@@ -294,7 +338,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the Client Keystore data that are loaded from the file
+     * Sets the Client Keystore data that are loaded from the file when using client lookup
      */
     public KubernetesConfigurationDefinition clientKeyFile(String clientKeyFile) {
         setClientKeyFile(clientKeyFile);
@@ -302,7 +346,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets the Client Keystore passphrase
+     * Sets the Client Keystore passphrase when using client lookup
      */
     public KubernetesConfigurationDefinition clientKeyPassphrase(String clientKeyPassphrase) {
         setClientKeyPassphrase(clientKeyPassphrase);
@@ -310,7 +354,7 @@ public class KubernetesConfigurationDefinition extends ServiceCallConfigurationD
     }
 
     /**
-     * Sets whether to turn on trust certificate check
+     * Sets whether to turn on trust certificate check when using client lookup
      */
     public KubernetesConfigurationDefinition trustCerts(boolean trustCerts) {
         setTrustCerts(trustCerts);

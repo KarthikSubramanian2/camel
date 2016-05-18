@@ -44,11 +44,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Kubernetes based implementation of the the ServiceCall EIP.
+ * Kubernetes based implementation of the the ServiceCall EIP where the service lookup is client based.
  */
-public class KubernetesServiceCallProcessor extends ServiceSupport implements AsyncProcessor, CamelContextAware, Traceable, IdAware {
+public class KubernetesClientServiceCallProcessor extends ServiceSupport implements AsyncProcessor, CamelContextAware, Traceable, IdAware {
 
-    private static final Logger LOG = LoggerFactory.getLogger(KubernetesServiceCallProcessor.class);
+    private static final Logger LOG = LoggerFactory.getLogger(KubernetesClientServiceCallProcessor.class);
 
     private CamelContext camelContext;
     private String id;
@@ -64,7 +64,7 @@ public class KubernetesServiceCallProcessor extends ServiceSupport implements As
     private ServiceCallLoadBalancer<KubernetesServer> loadBalancer;
     private SendDynamicProcessor processor;
 
-    public KubernetesServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, KubernetesConfiguration configuration) {
+    public KubernetesClientServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, KubernetesConfiguration configuration) {
         // setup from the provided name which can contain scheme and context-path information as well
         String serviceName;
         if (name.contains("/")) {

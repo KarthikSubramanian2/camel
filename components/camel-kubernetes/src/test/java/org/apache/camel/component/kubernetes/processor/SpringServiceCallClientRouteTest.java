@@ -23,11 +23,11 @@ import org.springframework.context.support.AbstractApplicationContext;
 import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 @Ignore("Manual test")
-public class SpringServiceCallRouteTest extends CamelSpringTestSupport {
+public class SpringServiceCallClientRouteTest extends CamelSpringTestSupport {
 
     @Override
     protected AbstractApplicationContext createApplicationContext() {
-        return new ClassPathXmlApplicationContext("org/apache/camel/component/kubernetes/processor/SpringServiceCallRouteTest.xml");
+        return new ClassPathXmlApplicationContext("org/apache/camel/component/kubernetes/processor/SpringServiceCallClientRouteTest.xml");
     }
 
     @Test
