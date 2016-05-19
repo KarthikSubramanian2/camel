@@ -77,7 +77,12 @@ public class KubernetesDnsServiceCallProcessor extends ServiceSupport implements
             this.name = serviceName;
         }
 
-        this.namespace = namespace;
+        // if no namespace configured then resolve from environment variables
+        if (namespace == null) {
+            this.namespace = System.getenv("KUBERNETES_NAMESPACE");
+        } else {
+            this.namespace = namespace;
+        }
         this.uri = uri;
         this.exchangePattern = exchangePattern;
         this.dnsDomain = dnsDomain;
