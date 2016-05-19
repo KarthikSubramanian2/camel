@@ -120,8 +120,14 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
                 lookup = configRef.getLookup();
             }
 
+            // the component is used to configure what the default scheme to use (eg camel component name)
+            String component = config != null ? config.getComponent() : null;
+            if (component == null && configRef != null) {
+                component = configRef.getComponent();
+            }
+
             if ("client".equals(lookup)) {
-                KubernetesClientServiceCallProcessor processor = new KubernetesClientServiceCallProcessor(name, namespace, uri, mep, kc);
+                KubernetesClientServiceCallProcessor processor = new KubernetesClientServiceCallProcessor(name, namespace, component, uri, mep, kc);
                 processor.setLoadBalancer(lb);
                 processor.setServerListStrategy(sl);
                 return processor;
@@ -130,10 +136,10 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
                 if (dnsDomain == null && configRef != null) {
                     dnsDomain = configRef.getDnsDomain();
                 }
-                return new KubernetesDnsServiceCallProcessor(name, namespace, uri, mep, dnsDomain);
+                return new KubernetesDnsServiceCallProcessor(name, namespace, component, uri, mep, dnsDomain);
             } else {
                 // environment is default
-                return new KubernetesEnvironmentServiceCallProcessor(name, namespace, uri, mep);
+                return new KubernetesEnvironmentServiceCallProcessor(name, namespace, component, uri, mep);
             }
         } else {
             return null;

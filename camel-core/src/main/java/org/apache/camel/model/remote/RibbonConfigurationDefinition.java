@@ -40,7 +40,7 @@ public class RibbonConfigurationDefinition extends ServiceCallConfigurationDefin
     // Getter/Setter
     // -------------------------------------------------------------------------
 
-
+    // currently no ribbon specific options
 
     // Fluent API
     // -------------------------------------------------------------------------

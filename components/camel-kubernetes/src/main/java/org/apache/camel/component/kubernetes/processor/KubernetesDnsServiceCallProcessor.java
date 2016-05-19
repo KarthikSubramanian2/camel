@@ -56,7 +56,7 @@ public class KubernetesDnsServiceCallProcessor extends ServiceSupport implements
     private String ip;
     private long port;
 
-    public KubernetesDnsServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, String dnsDomain) {
+    public KubernetesDnsServiceCallProcessor(String name, String namespace, String scheme, String uri, ExchangePattern exchangePattern, String dnsDomain) {
         // setup from the provided name which can contain scheme and context-path information as well
         String serviceName;
         if (name.contains("/")) {
@@ -73,7 +73,7 @@ public class KubernetesDnsServiceCallProcessor extends ServiceSupport implements
             this.scheme = ObjectHelper.before(serviceName, ":");
             this.name = ObjectHelper.after(serviceName, ":");
         } else {
-            this.scheme = null;
+            this.scheme = scheme;
             this.name = serviceName;
         }
 

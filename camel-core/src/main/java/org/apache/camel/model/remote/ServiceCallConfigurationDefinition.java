@@ -46,6 +46,8 @@ public abstract class ServiceCallConfigurationDefinition extends IdentifiedType 
 
     @XmlTransient
     private ServiceCallDefinition parent;
+    @XmlAttribute @Metadata(defaultValue = "http")
+    private String component;
     @XmlAttribute
     private String loadBalancerRef;
     @XmlTransient
@@ -69,6 +71,15 @@ public abstract class ServiceCallConfigurationDefinition extends IdentifiedType 
 
     // Getter/Setter
     // -------------------------------------------------------------------------
+
+
+    public String getComponent() {
+        return component;
+    }
+
+    public void setComponent(String component) {
+        this.component = component;
+    }
 
     public String getLoadBalancerRef() {
         return loadBalancerRef;
@@ -122,6 +133,21 @@ public abstract class ServiceCallConfigurationDefinition extends IdentifiedType 
 
     // Fluent API
     // -------------------------------------------------------------------------
+
+    /**
+     * Sets the default Camel component to use for calling the remote service.
+     * <p/>
+     * By default the http component is used. You can configure this to use <tt>netty4-http</tt>, <tt>jetty</tt>,
+     * <tt>restlet</tt> or some other components of choice. If the service is not HTTP protocol you can use other
+     * components such as <tt>mqtt</tt>, <tt>jms</tt>, <tt>amqp</tt> etc.
+     * <p/>
+     * If the service call has been configured using an uri, then the component from the uri is used instead
+     * of this default component.
+     */
+    public ServiceCallConfigurationDefinition component(String component) {
+        setComponent(component);
+        return this;
+    }
 
     /**
      * Sets a reference to a custom {@link org.apache.camel.spi.ServiceCallLoadBalancer} to use.

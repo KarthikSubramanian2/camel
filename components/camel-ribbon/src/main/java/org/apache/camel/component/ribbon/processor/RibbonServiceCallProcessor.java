@@ -72,7 +72,7 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
     private Map<String, String> ribbonClientConfig;
     private SendDynamicProcessor processor;
 
-    public RibbonServiceCallProcessor(String name, String uri, ExchangePattern exchangePattern, RibbonConfiguration configuration) {
+    public RibbonServiceCallProcessor(String name, String uri, String scheme, ExchangePattern exchangePattern, RibbonConfiguration configuration) {
         // setup from the provided name which can contain scheme and context-path information as well
         String serviceName;
         if (name.contains("/")) {
@@ -89,7 +89,7 @@ public class RibbonServiceCallProcessor extends ServiceSupport implements AsyncP
             this.scheme = ObjectHelper.before(serviceName, ":");
             this.name = ObjectHelper.after(serviceName, ":");
         } else {
-            this.scheme = null;
+            this.scheme = scheme;
             this.name = serviceName;
         }
 

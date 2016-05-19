@@ -55,7 +55,7 @@ public class KubernetesEnvironmentServiceCallProcessor extends ServiceSupport im
     private String ip;
     private long port;
 
-    public KubernetesEnvironmentServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern) {
+    public KubernetesEnvironmentServiceCallProcessor(String name, String namespace, String scheme, String uri, ExchangePattern exchangePattern) {
         // setup from the provided name which can contain scheme and context-path information as well
         String serviceName;
         if (name.contains("/")) {
@@ -72,7 +72,7 @@ public class KubernetesEnvironmentServiceCallProcessor extends ServiceSupport im
             this.scheme = ObjectHelper.before(serviceName, ":");
             this.name = ObjectHelper.after(serviceName, ":");
         } else {
-            this.scheme = null;
+            this.scheme = scheme;
             this.name = serviceName;
         }
 

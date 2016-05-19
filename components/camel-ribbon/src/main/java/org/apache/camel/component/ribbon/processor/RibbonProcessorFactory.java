@@ -119,9 +119,15 @@ public class RibbonProcessorFactory implements ProcessorFactory {
                 throw new IllegalArgumentException("Load balancer must be of type: " + IRule.class + " but is of type: " + lb.getClass().getName());
             }
 
+            // the component is used to configure what the default scheme to use (eg camel component name)
+            String component = config != null ? config.getComponent() : null;
+            if (component == null && configRef != null) {
+                component = configRef.getComponent();
+            }
+
             Map<String, String> properties = configureProperties(routeContext, config, configRef);
 
-            RibbonServiceCallProcessor processor = new RibbonServiceCallProcessor(name, uri, mep, rc);
+            RibbonServiceCallProcessor processor = new RibbonServiceCallProcessor(name, uri, component, mep, rc);
             processor.setRule((IRule) lb);
             processor.setServerListStrategy(sl);
             processor.setRibbonClientConfig(properties);

@@ -63,7 +63,7 @@ public class KubernetesClientServiceCallProcessor extends ServiceSupport impleme
     private ServiceCallLoadBalancer<KubernetesServer> loadBalancer;
     private SendDynamicProcessor processor;
 
-    public KubernetesClientServiceCallProcessor(String name, String namespace, String uri, ExchangePattern exchangePattern, KubernetesConfiguration configuration) {
+    public KubernetesClientServiceCallProcessor(String name, String namespace, String scheme, String uri, ExchangePattern exchangePattern, KubernetesConfiguration configuration) {
         // setup from the provided name which can contain scheme and context-path information as well
         String serviceName;
         if (name.contains("/")) {
@@ -80,7 +80,7 @@ public class KubernetesClientServiceCallProcessor extends ServiceSupport impleme
             this.scheme = ObjectHelper.before(serviceName, ":");
             this.name = ObjectHelper.after(serviceName, ":");
         } else {
-            this.scheme = null;
+            this.scheme = scheme;
             this.name = serviceName;
         }
 
