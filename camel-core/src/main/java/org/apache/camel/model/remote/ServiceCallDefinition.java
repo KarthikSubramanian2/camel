@@ -30,7 +30,6 @@ import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.RouteContext;
 import org.apache.camel.spi.ServiceCallLoadBalancer;
 import org.apache.camel.spi.ServiceCallServerListStrategy;
-import org.apache.camel.util.CamelContextHelper;
 
 /**
  * Remote service call
@@ -75,17 +74,7 @@ public class ServiceCallDefinition extends NoOutputDefinition<ServiceCallDefinit
 
     @Override
     public Processor createProcessor(RouteContext routeContext) throws Exception {
-        String component = serviceCallConfiguration != null ? serviceCallConfiguration.getComponent() : null;
-        if (component == null && serviceCallConfigurationRef != null) {
-            ServiceCallConfigurationDefinition config = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), serviceCallConfigurationRef, ServiceCallConfigurationDefinition.class);
-            component = config.getComponent();
-        }
-
-        if (component != null) {
-            throw new IllegalStateException("Cannot find Camel component on the classpath implementing the discovery provider: " + component);
-        } else {
-            throw new IllegalStateException("Cannot find Camel component supporting the ServiceCall EIP such as camel-kubernetes or camel-ribbon.");
-        }
+        throw new IllegalStateException("Cannot find Camel component supporting the ServiceCall EIP such as camel-kubernetes or camel-ribbon.");
     }
 
     // Fluent API

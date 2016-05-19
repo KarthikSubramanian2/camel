@@ -47,8 +47,6 @@ public abstract class ServiceCallConfigurationDefinition extends IdentifiedType 
     @XmlTransient
     private ServiceCallDefinition parent;
     @XmlAttribute
-    private String component;
-    @XmlAttribute
     private String loadBalancerRef;
     @XmlTransient
     private ServiceCallLoadBalancer loadBalancer;
@@ -71,14 +69,6 @@ public abstract class ServiceCallConfigurationDefinition extends IdentifiedType 
 
     // Getter/Setter
     // -------------------------------------------------------------------------
-
-    public String getComponent() {
-        return component;
-    }
-
-    public void setComponent(String component) {
-        this.component = component;
-    }
 
     public String getLoadBalancerRef() {
         return loadBalancerRef;
@@ -132,14 +122,6 @@ public abstract class ServiceCallConfigurationDefinition extends IdentifiedType 
 
     // Fluent API
     // -------------------------------------------------------------------------
-
-    /**
-     * Sets the name of the Camel component to use such as ribbon or kubernetes
-     */
-    public ServiceCallConfigurationDefinition component(String component) {
-        setComponent(component);
-        return this;
-    }
 
     /**
      * Sets a reference to a custom {@link org.apache.camel.spi.ServiceCallLoadBalancer} to use.

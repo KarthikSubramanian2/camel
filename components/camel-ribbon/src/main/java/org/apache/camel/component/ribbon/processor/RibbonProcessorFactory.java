@@ -74,23 +74,13 @@ public class RibbonProcessorFactory implements ProcessorFactory {
             if (config == null) {
                 // if no default then try to find if there configuration in the registry of the given type
                 Set<RibbonConfigurationDefinition> set = routeContext.getCamelContext().getRegistry().findByType(RibbonConfigurationDefinition.class);
-                if (set != null) {
-                    for (RibbonConfigurationDefinition candidate : set) {
-                        if (candidate.getComponent() == null || "ribbon".equals(candidate.getComponent())) {
-                            config = candidate;
-                            break;
-                        }
-                    }
+                if (set.size() == 1) {
+                    config = set.iterator().next();
                 }
             }
 
-            // component must either not be set, or if set then must be us
-            String component = config != null ? config.getComponent() : null;
-            if (component == null && configRef != null) {
-                component = configRef.getComponent();
-            }
-            if (component != null && !"ribbon".equals(component)) {
-                return null;
+            if (config == null && configRef == null) {
+                throw new IllegalStateException("The ServiceCall: " + definition + " must be configured before it can be used.");
             }
 
             // extract the properties from the configuration from the model
