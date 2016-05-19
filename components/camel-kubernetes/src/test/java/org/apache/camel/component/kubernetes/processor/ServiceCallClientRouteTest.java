@@ -18,7 +18,6 @@ package org.apache.camel.component.kubernetes.processor;
 
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.impl.JndiRegistry;
 import org.apache.camel.model.remote.KubernetesConfigurationDefinition;
 import org.apache.camel.test.junit4.CamelTestSupport;
 import org.junit.Ignore;
@@ -26,14 +25,6 @@ import org.junit.Test;
 
 @Ignore("Manual test")
 public class ServiceCallClientRouteTest extends CamelTestSupport {
-
-    private JndiRegistry registry;
-
-    @Override
-    protected JndiRegistry createRegistry() throws Exception {
-        registry = super.createRegistry();
-        return registry;
-    }
 
     @Test
     public void testServiceCall() throws Exception {
@@ -58,8 +49,8 @@ public class ServiceCallClientRouteTest extends CamelTestSupport {
                 // lets use the built-in round robin (random is default)
                 config.setLoadBalancerRef("roundrobin");
 
-                // add the config to the registry so service call can use it
-                registry.bind("myConfig", config);
+                // register configuration
+                context.setServiceCallConfiguration(config);
 
                 from("direct:start")
                     .serviceCall("cdi-camel-jetty")

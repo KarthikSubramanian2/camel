@@ -25,7 +25,7 @@
   <camelContext xmlns="http://camel.apache.org/schema/spring">
 
     <!-- use client to lookup the service, which requires to setup a number of options -->
-    <kubernetesConfiguration id="myConfig" masterUrl="http://172.28.128.80:8080" lookup="client"
+    <kubernetesConfiguration id="kubernetes" masterUrl="http://172.28.128.80:8080" lookup="client"
                              username="admin" password="admin" namespace="default" loadBalancerRef="roundrobin"/>
 
     <route>

@@ -18,18 +18,9 @@ package org.apache.camel.component.ribbon.processor;
 
 import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.impl.JndiRegistry;
 import org.apache.camel.model.remote.RibbonConfigurationDefinition;
 
 public class RibbonServiceCallRegistryRouteTest extends RibbonServiceCallRouteTest {
-
-    private JndiRegistry registry;
-
-    @Override
-    protected JndiRegistry createRegistry() throws Exception {
-        registry = super.createRegistry();
-        return registry;
-    }
 
     @Override
     protected RoutesBuilder createRouteBuilder() throws Exception {
@@ -45,8 +36,8 @@ public class RibbonServiceCallRegistryRouteTest extends RibbonServiceCallRouteTe
                 RibbonConfigurationDefinition config = new RibbonConfigurationDefinition();
                 config.setServerListStrategy(servers);
 
-                // add the config to the registry so service call can use it
-                registry.bind("myConfig", config);
+                // register configuration
+                context.setServiceCallConfiguration(config);
 
                 from("direct:start")
                         .serviceCall("myService")

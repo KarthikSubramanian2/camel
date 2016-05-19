@@ -58,11 +58,20 @@ public class KubernetesProcessorFactory implements ProcessorFactory {
             KubernetesConfigurationDefinition config = (KubernetesConfigurationDefinition) sc.getServiceCallConfiguration();
             KubernetesConfigurationDefinition configRef = null;
             if (sc.getServiceCallConfigurationRef() != null) {
-                configRef = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), sc.getServiceCallConfigurationRef(), KubernetesConfigurationDefinition.class);
+                // lookup in registry first
+                configRef = CamelContextHelper.lookup(routeContext.getCamelContext(), sc.getServiceCallConfigurationRef(), KubernetesConfigurationDefinition.class);
+                if (configRef == null) {
+                    // and fallback as service configuration
+                    routeContext.getCamelContext().getServiceCallConfiguration(sc.getServiceCallConfigurationRef(), KubernetesConfigurationDefinition.class);
+                }
             }
 
-            // if no configuration explicit configured then try to lookup in registry by type and find the best candidate to use
+            // if no configuration explicit configured then use default
             if (config == null && configRef == null) {
+                config = routeContext.getCamelContext().getServiceCallConfiguration(null, KubernetesConfigurationDefinition.class);
+            }
+            if (config == null) {
+                // if no default then try to find if there configuration in the registry of the given type
                 Set<KubernetesConfigurationDefinition> set = routeContext.getCamelContext().getRegistry().findByType(KubernetesConfigurationDefinition.class);
                 if (set != null) {
                     for (KubernetesConfigurationDefinition candidate : set) {

@@ -27,14 +27,6 @@ import org.junit.Test;
 @Ignore("Manual test")
 public class ServiceCallEnvironmentRouteTest extends CamelTestSupport {
 
-    private JndiRegistry registry;
-
-    @Override
-    protected JndiRegistry createRegistry() throws Exception {
-        registry = super.createRegistry();
-        return registry;
-    }
-
     @Test
     public void testServiceCall() throws Exception {
         getMockEndpoint("mock:result").expectedMessageCount(1);
@@ -52,8 +44,8 @@ public class ServiceCallEnvironmentRouteTest extends CamelTestSupport {
                 KubernetesConfigurationDefinition config = new KubernetesConfigurationDefinition();
                 config.setLookup("environment");
 
-                // add the config to the registry so service call can use it
-                registry.bind("myConfig", config);
+                // register configuration
+                context.setServiceCallConfiguration(config);
 
                 from("direct:start")
                     .serviceCall("cdi-camel-jetty")

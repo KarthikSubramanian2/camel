@@ -25,7 +25,7 @@
   <camelContext xmlns="http://camel.apache.org/schema/spring">
 
     <!-- use environment variables to lookup the service -->
-    <kubernetesConfiguration id="myConfig" lookup="environment"/>
+    <kubernetesConfiguration id="kubernetes" lookup="environment"/>
 
     <route>
       <from uri="direct:start"/>

@@ -26,6 +26,7 @@ import org.apache.camel.Processor;
 import org.apache.camel.component.ribbon.RibbonConfiguration;
 import org.apache.camel.model.ProcessorDefinition;
 import org.apache.camel.model.PropertyDefinition;
+import org.apache.camel.model.remote.RibbonConfigurationDefinition;
 import org.apache.camel.model.remote.ServiceCallConfigurationDefinition;
 import org.apache.camel.model.remote.ServiceCallDefinition;
 import org.apache.camel.spi.ProcessorFactory;
@@ -55,32 +56,32 @@ public class RibbonProcessorFactory implements ProcessorFactory {
             String uri = sc.getUri();
             ExchangePattern mep = sc.getPattern();
 
-            ServiceCallConfigurationDefinition config = sc.getServiceCallConfiguration();
-            ServiceCallConfigurationDefinition configRef = null;
+            RibbonConfigurationDefinition config = (RibbonConfigurationDefinition) sc.getServiceCallConfiguration();
+            RibbonConfigurationDefinition configRef = null;
             if (sc.getServiceCallConfigurationRef() != null) {
-                configRef = CamelContextHelper.mandatoryLookup(routeContext.getCamelContext(), sc.getServiceCallConfigurationRef(), ServiceCallConfigurationDefinition.class);
+                // lookup in registry first
+                configRef = CamelContextHelper.lookup(routeContext.getCamelContext(), sc.getServiceCallConfigurationRef(), RibbonConfigurationDefinition.class);
+                if (configRef == null) {
+                    // and fallback as service configuration
+                    routeContext.getCamelContext().getServiceCallConfiguration(sc.getServiceCallConfigurationRef(), RibbonConfigurationDefinition.class);
+                }
             }
 
-            // if no configuration explicit configured then try to lookup in registry by type and find the best candidate to use
+            // if no configuration explicit configured then use default
             if (config == null && configRef == null) {
-                Set<ServiceCallConfigurationDefinition> set = routeContext.getCamelContext().getRegistry().findByType(ServiceCallConfigurationDefinition.class);
+                config = routeContext.getCamelContext().getServiceCallConfiguration(null, RibbonConfigurationDefinition.class);
+            }
+            if (config == null) {
+                // if no default then try to find if there configuration in the registry of the given type
+                Set<RibbonConfigurationDefinition> set = routeContext.getCamelContext().getRegistry().findByType(RibbonConfigurationDefinition.class);
                 if (set != null) {
-                    for (ServiceCallConfigurationDefinition candidate : set) {
+                    for (RibbonConfigurationDefinition candidate : set) {
                         if (candidate.getComponent() == null || "ribbon".equals(candidate.getComponent())) {
                             config = candidate;
                             break;
                         }
                     }
                 }
-            }
-
-            // extract the properties from the configuration from the model
-            Map<String, Object> parameters = new HashMap<>();
-            if (configRef != null) {
-                IntrospectionSupport.getProperties(configRef, parameters, null);
-            }
-            if (config != null) {
-                IntrospectionSupport.getProperties(config, parameters, null);
             }
 
             // component must either not be set, or if set then must be us
@@ -90,6 +91,15 @@ public class RibbonProcessorFactory implements ProcessorFactory {
             }
             if (component != null && !"ribbon".equals(component)) {
                 return null;
+            }
+
+            // extract the properties from the configuration from the model
+            Map<String, Object> parameters = new HashMap<>();
+            if (configRef != null) {
+                IntrospectionSupport.getProperties(configRef, parameters, null);
+            }
+            if (config != null) {
+                IntrospectionSupport.getProperties(config, parameters, null);
             }
 
             // and set them on the kubernetes configuration class

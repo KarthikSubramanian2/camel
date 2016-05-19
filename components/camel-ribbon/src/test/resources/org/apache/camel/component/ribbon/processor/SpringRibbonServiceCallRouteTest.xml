@@ -32,7 +32,7 @@
   <camelContext xmlns="http://camel.apache.org/schema/spring">
 
     <!-- service call configuration to use ribbon -->
-    <ribbonConfiguration id="myConfig" serverListStrategyRef="servers"/>
+    <ribbonConfiguration id="ribbon" serverListStrategyRef="servers"/>
 
     <route>
       <from uri="direct:start"/>
