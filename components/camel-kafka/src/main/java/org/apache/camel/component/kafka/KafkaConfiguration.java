@@ -16,6 +16,8 @@
  */
 package org.apache.camel.component.kafka;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 
@@ -27,6 +29,7 @@ import org.apache.camel.spi.UriPath;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.config.SslConfigs;
 
@@ -46,10 +49,6 @@ public class KafkaConfiguration {
     private int consumerStreams = 10;
     @UriParam(label = "consumer", defaultValue = "1")
     private int consumersCount = 1;
-    @UriParam(label = "consumer", defaultValue = "100")
-    private int batchSize = 100;
-    @UriParam(label = "consumer", defaultValue = "10000")
-    private int barrierAwaitTimeoutMs = 10000;
 
     //Common configuration properties
     @UriParam
@@ -73,7 +72,11 @@ public class KafkaConfiguration {
     //session.timeout.ms
     @UriParam(label = "consumer", defaultValue = "30000")
     private Integer sessionTimeoutMs = 30000;
-    //auto.offset.reset
+    @UriParam(label = "consumer", defaultValue = "500")
+    private Integer maxPollRecords;
+    @UriParam(label = "consumer", defaultValue = "5000")
+    private Long pollTimeoutMs = 5000L;
+    //auto.offset.reset1
     @UriParam(label = "consumer", defaultValue = "latest", enums = "latest,earliest,none")
     private String autoOffsetReset = "latest";
     //partition.assignment.strategy
@@ -119,7 +122,7 @@ public class KafkaConfiguration {
     @UriParam(label = "producer")
     private String keySerializerClass;
 
-    @UriParam(label = "producer", enums = "0,1,all", defaultValue = "1")
+    @UriParam(label = "producer", enums = "-1,0,1,all", defaultValue = "1")
     private String requestRequiredAcks = "1";
     //buffer.memory
     @UriParam(label = "producer", defaultValue = "33554432")
@@ -130,22 +133,6 @@ public class KafkaConfiguration {
     //retries
     @UriParam(label = "producer", defaultValue = "0")
     private Integer retries = 0;
-    // SSL
-    // ssl.key.password
-    @UriParam(label = "producer")
-    private String sslKeyPassword;
-    // ssl.keystore.location
-    @UriParam(label = "producer")
-    private String sslKeystoreLocation;
-    // ssl.keystore.password
-    @UriParam(label = "producer")
-    private String sslKeystorePassword;
-    //ssl.truststore.location
-    @UriParam(label = "producer")
-    private String sslTruststoreLocation;
-    //ssl.truststore.password
-    @UriParam(label = "producer")
-    private String sslTruststorePassword;
     //batch.size
     @UriParam(label = "producer", defaultValue = "16384")
     private Integer producerBatchSize = 16384;
@@ -167,32 +154,11 @@ public class KafkaConfiguration {
     //request.timeout.ms
     @UriParam(label = "producer", defaultValue = "30000")
     private Integer requestTimeoutMs = 30000;
-    // SASL & sucurity Protocol
-    //sasl.kerberos.service.name
-    @UriParam(label = "producer")
-    private String saslKerberosServiceName;
-    //security.protocol
-    @UriParam(label = "producer", defaultValue = CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL)
-    private String securityProtocol = CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL;
     //send.buffer.bytes
     @UriParam(label = "producer", defaultValue = "131072")
     private Integer sendBufferBytes = 131072;
-    //SSL
-    //ssl.enabled.protocols
-    @UriParam(label = "producer", defaultValue = SslConfigs.DEFAULT_SSL_ENABLED_PROTOCOLS)
-    private String sslEnabledProtocols = SslConfigs.DEFAULT_SSL_ENABLED_PROTOCOLS;
-    //ssl.keystore.type
-    @UriParam(label = "producer", defaultValue = SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE)
-    private String sslKeystoreType = SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE;
-    //ssl.protocol
-    @UriParam(label = "producer", defaultValue = SslConfigs.DEFAULT_SSL_PROTOCOL)
-    private String sslProtocol = SslConfigs.DEFAULT_SSL_PROTOCOL;
-    //ssl.provider
-    @UriParam(label = "producer")
-    private String sslProvider;
-    //ssl.truststore.type
-    @UriParam(label = "producer", defaultValue = SslConfigs.DEFAULT_SSL_TRUSTSTORE_TYPE)
-    private String sslTruststoreType = SslConfigs.DEFAULT_SSL_TRUSTSTORE_TYPE;
+    @UriParam(label = "producer", defaultValue = "true")
+    private boolean recordMetadata = true;
     //max.in.flight.requests.per.connection
     @UriParam(label = "producer", defaultValue = "5")
     private Integer maxInFlightRequest = 5;
@@ -211,32 +177,77 @@ public class KafkaConfiguration {
     //reconnect.backoff.ms
     @UriParam(label = "producer", defaultValue = "50")
     private Integer reconnectBackoffMs = 50;
-    //SASL
-    //sasl.kerberos.kinit.cmd
-    @UriParam(label = "producer", defaultValue = SaslConfigs.DEFAULT_KERBEROS_KINIT_CMD)
-    private String kerberosInitCmd = SaslConfigs.DEFAULT_KERBEROS_KINIT_CMD;
-    //sasl.kerberos.min.time.before.relogin
-    @UriParam(label = "producer", defaultValue = "60000")
-    private Integer kerberosBeforeReloginMinTime = 60000;
-    //sasl.kerberos.ticket.renew.jitter
-    @UriParam(label = "producer", defaultValue = "0.05")
-    private Double kerberosRenewJitter = SaslConfigs.DEFAULT_KERBEROS_TICKET_RENEW_JITTER;
-    //sasl.kerberos.ticket.renew.window.factor
-    @UriParam(label = "producer", defaultValue = "0.8")
-    private Double kerberosRenewWindowFactor = SaslConfigs.DEFAULT_KERBEROS_TICKET_RENEW_WINDOW_FACTOR;
+    // SSL
+    // ssl.key.password
+    @UriParam(label = "producer,security", secret = true)
+    private String sslKeyPassword;
+    // ssl.keystore.location
+    @UriParam(label = "producer,security")
+    private String sslKeystoreLocation;
+    // ssl.keystore.password
+    @UriParam(label = "producer,security", secret = true)
+    private String sslKeystorePassword;
+    //ssl.truststore.location
+    @UriParam(label = "producer,security")
+    private String sslTruststoreLocation;
+    //ssl.truststore.password
+    @UriParam(label = "producer,security", secret = true)
+    private String sslTruststorePassword;
+    //SSL
+    //ssl.enabled.protocols
+    @UriParam(label = "common,security", defaultValue = SslConfigs.DEFAULT_SSL_ENABLED_PROTOCOLS)
+    private String sslEnabledProtocols = SslConfigs.DEFAULT_SSL_ENABLED_PROTOCOLS;
+    //ssl.keystore.type
+    @UriParam(label = "common,security", defaultValue = SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE)
+    private String sslKeystoreType = SslConfigs.DEFAULT_SSL_KEYSTORE_TYPE;
+    //ssl.protocol
+    @UriParam(label = "common,security", defaultValue = SslConfigs.DEFAULT_SSL_PROTOCOL)
+    private String sslProtocol = SslConfigs.DEFAULT_SSL_PROTOCOL;
+    //ssl.provider
+    @UriParam(label = "common,security")
+    private String sslProvider;
+    //ssl.truststore.type
+    @UriParam(label = "common,security", defaultValue = SslConfigs.DEFAULT_SSL_TRUSTSTORE_TYPE)
+    private String sslTruststoreType = SslConfigs.DEFAULT_SSL_TRUSTSTORE_TYPE;
     //SSL
     //ssl.cipher.suites
-    @UriParam(label = "producer")
+    @UriParam(label = "common,security")
     private String sslCipherSuites;
     //ssl.endpoint.identification.algorithm
-    @UriParam(label = "producer")
+    @UriParam(label = "common,security")
     private String sslEndpointAlgorithm;
     //ssl.keymanager.algorithm
-    @UriParam(label = "producer", defaultValue = "SunX509")
+    @UriParam(label = "common,security", defaultValue = "SunX509")
     private String sslKeymanagerAlgorithm = "SunX509";
     //ssl.trustmanager.algorithm
-    @UriParam(label = "producer", defaultValue = "PKIX")
+    @UriParam(label = "common,security", defaultValue = "PKIX")
     private String sslTrustmanagerAlgorithm = "PKIX";
+    // SASL & sucurity Protocol
+    //sasl.kerberos.service.name
+    @UriParam(label = "common,security")
+    private String saslKerberosServiceName;
+    //security.protocol
+    @UriParam(label = "common,security", defaultValue = CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL)
+    private String securityProtocol = CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL;
+    //SASL
+    //sasl.kerberos.kinit.cmd
+    @UriParam(label = "common,security", defaultValue = SaslConfigs.DEFAULT_SASL_MECHANISM)
+    private String saslMechanism = SaslConfigs.DEFAULT_SASL_MECHANISM;
+    //sasl.kerberos.kinit.cmd
+    @UriParam(label = "common,security", defaultValue = SaslConfigs.DEFAULT_KERBEROS_KINIT_CMD)
+    private String kerberosInitCmd = SaslConfigs.DEFAULT_KERBEROS_KINIT_CMD;
+    //sasl.kerberos.min.time.before.relogin
+    @UriParam(label = "common,security", defaultValue = "60000")
+    private Integer kerberosBeforeReloginMinTime = 60000;
+    //sasl.kerberos.ticket.renew.jitter
+    @UriParam(label = "common,security", defaultValue = "0.05")
+    private Double kerberosRenewJitter = SaslConfigs.DEFAULT_KERBEROS_TICKET_RENEW_JITTER;
+    //sasl.kerberos.ticket.renew.window.factor
+    @UriParam(label = "common,security", defaultValue = "0.8")
+    private Double kerberosRenewWindowFactor = SaslConfigs.DEFAULT_KERBEROS_TICKET_RENEW_WINDOW_FACTOR;
+    @UriParam(label = "common,security", defaultValue = "DEFAULT")
+    //sasl.kerberos.principal.to.local.rules
+    private String kerberosPrincipalToLocalRules;
 
     public KafkaConfiguration() {
     }
@@ -265,8 +276,6 @@ public class KafkaConfiguration {
         addPropertyIfNotNull(props, ProducerConfig.PARTITIONER_CLASS_CONFIG, getPartitioner());
         addPropertyIfNotNull(props, ProducerConfig.RECEIVE_BUFFER_CONFIG, getReceiveBufferBytes());
         addPropertyIfNotNull(props, ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, getRequestTimeoutMs());
-        //SASL
-        addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_SERVICE_NAME, getSaslKerberosServiceName());
         // Security protocol
         addPropertyIfNotNull(props, CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, getSecurityProtocol());
         addPropertyIfNotNull(props, ProducerConfig.SEND_BUFFER_CONFIG, getSendBufferBytes());
@@ -284,10 +293,13 @@ public class KafkaConfiguration {
         addPropertyIfNotNull(props, ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG, getReconnectBackoffMs());
         addPropertyIfNotNull(props, ProducerConfig.RETRY_BACKOFF_MS_CONFIG, getRetryBackoffMs());
         //SASL
+        addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_SERVICE_NAME, getSaslKerberosServiceName());
         addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_KINIT_CMD, getKerberosInitCmd());
         addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_MIN_TIME_BEFORE_RELOGIN, getKerberosBeforeReloginMinTime());
         addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_TICKET_RENEW_JITTER, getKerberosRenewJitter());
         addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_TICKET_RENEW_WINDOW_FACTOR, getKerberosRenewWindowFactor());
+        addListPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_PRINCIPAL_TO_LOCAL_RULES, getKerberosPrincipalToLocalRules());
+        addPropertyIfNotNull(props, SaslConfigs.SASL_MECHANISM, getSaslMechanism());
         //SSL
         addPropertyIfNotNull(props, SslConfigs.SSL_CIPHER_SUITES_CONFIG, getSslCipherSuites());
         addPropertyIfNotNull(props, SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, getSslEndpointAlgorithm());
@@ -305,6 +317,7 @@ public class KafkaConfiguration {
         addPropertyIfNotNull(props, ConsumerConfig.HEARTBEAT_INTERVAL_MS_CONFIG, getHeartbeatIntervalMs());
         addPropertyIfNotNull(props, ConsumerConfig.MAX_PARTITION_FETCH_BYTES_CONFIG, getMaxPartitionFetchBytes());
         addPropertyIfNotNull(props, ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, getSessionTimeoutMs());
+        addPropertyIfNotNull(props, ConsumerConfig.MAX_POLL_RECORDS_CONFIG, getMaxPollRecords());
         // SSL
         addPropertyIfNotNull(props, SslConfigs.SSL_KEY_PASSWORD_CONFIG, getSslKeyPassword());
         addPropertyIfNotNull(props, SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, getSslKeystoreLocation());
@@ -317,8 +330,6 @@ public class KafkaConfiguration {
         addPropertyIfNotNull(props, ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG, getPartitionAssignor());
         addPropertyIfNotNull(props, ConsumerConfig.RECEIVE_BUFFER_CONFIG, getReceiveBufferBytes());
         addPropertyIfNotNull(props, ConsumerConfig.REQUEST_TIMEOUT_MS_CONFIG, getConsumerRequestTimeoutMs());
-        //SASL
-        addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_SERVICE_NAME, getSaslKerberosServiceName());
         // Security protocol
         addPropertyIfNotNull(props, CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, getSecurityProtocol());
         addPropertyIfNotNull(props, ProducerConfig.SEND_BUFFER_CONFIG, getSendBufferBytes());
@@ -339,10 +350,13 @@ public class KafkaConfiguration {
         addPropertyIfNotNull(props, ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, getReconnectBackoffMs());
         addPropertyIfNotNull(props, ConsumerConfig.RETRY_BACKOFF_MS_CONFIG, getRetryBackoffMs());
         //SASL
+        addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_SERVICE_NAME, getSaslKerberosServiceName());
         addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_KINIT_CMD, getKerberosInitCmd());
         addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_MIN_TIME_BEFORE_RELOGIN, getKerberosBeforeReloginMinTime());
         addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_TICKET_RENEW_JITTER, getKerberosRenewJitter());
         addPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_TICKET_RENEW_WINDOW_FACTOR, getKerberosRenewWindowFactor());
+        addListPropertyIfNotNull(props, SaslConfigs.SASL_KERBEROS_PRINCIPAL_TO_LOCAL_RULES, getKerberosPrincipalToLocalRules());
+        addPropertyIfNotNull(props, SaslConfigs.SASL_MECHANISM, getSaslMechanism());
         //SSL
         addPropertyIfNotNull(props, SslConfigs.SSL_CIPHER_SUITES_CONFIG, getSslCipherSuites());
         addPropertyIfNotNull(props, SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, getSslEndpointAlgorithm());
@@ -355,6 +369,15 @@ public class KafkaConfiguration {
         if (value != null) {
             // Kafka expects all properties as String
             props.put(key, value.toString());
+        }
+    }
+
+    private static <T> void addListPropertyIfNotNull(Properties props, String key, T value) {
+        if (value != null) {
+            // Kafka expects all properties as String
+            String[] values = value.toString().split(",");
+            List<String> list = Arrays.asList(values);
+            props.put(key, list);
         }
     }
 
@@ -401,28 +424,6 @@ public class KafkaConfiguration {
      */
     public void setConsumerStreams(int consumerStreams) {
         this.consumerStreams = consumerStreams;
-    }
-
-    public int getBatchSize() {
-        return batchSize;
-    }
-
-    /**
-     * The batchSize that the BatchingConsumerTask processes once.
-     */
-    public void setBatchSize(int batchSize) {
-        this.batchSize = batchSize;
-    }
-
-    public int getBarrierAwaitTimeoutMs() {
-        return barrierAwaitTimeoutMs;
-    }
-
-    /**
-     * If the BatchingConsumerTask processes exchange exceed the batchSize, it will wait for barrierAwaitTimeoutMs.
-     */
-    public void setBarrierAwaitTimeoutMs(int barrierAwaitTimeoutMs) {
-        this.barrierAwaitTimeoutMs = barrierAwaitTimeoutMs;
     }
 
     public int getConsumersCount() {
@@ -665,6 +666,22 @@ public class KafkaConfiguration {
         this.kerberosRenewWindowFactor = kerberosRenewWindowFactor;
     }
 
+    public String getKerberosPrincipalToLocalRules() {
+        return kerberosPrincipalToLocalRules;
+    }
+
+    /**
+     * A list of rules for mapping from principal names to short names (typically operating system usernames).
+     * The rules are evaluated in order and the first rule that matches a principal name is used to map it to a short name. Any later rules in the list are ignored.
+     * By default, principal names of the form {username}/{hostname}@{REALM} are mapped to {username}.
+     * For more details on the format please see <a href=\"#security_authz\"> security authorization and acls</a>.
+     * <p/>
+     * Multiple values can be separated by comma
+     */
+    public void setKerberosPrincipalToLocalRules(String kerberosPrincipalToLocalRules) {
+        this.kerberosPrincipalToLocalRules = kerberosPrincipalToLocalRules;
+    }
+
     public String getSslCipherSuites() {
         return sslCipherSuites;
     }
@@ -780,6 +797,18 @@ public class KafkaConfiguration {
      */
     public void setSaslKerberosServiceName(String saslKerberosServiceName) {
         this.saslKerberosServiceName = saslKerberosServiceName;
+    }
+
+    public String getSaslMechanism() {
+        return saslMechanism;
+    }
+
+    /**
+     * The Simple Authentication and Security Layer (SASL) Mechanism used. 
+     * For the valid values see <a href="http://www.iana.org/assignments/sasl-mechanisms/sasl-mechanisms.xhtml">http://www.iana.org/assignments/sasl-mechanisms/sasl-mechanisms.xhtml</a>
+     */
+    public void setSaslMechanism(String saslMechanism) {
+        this.saslMechanism = saslMechanism;
     }
 
     public String getSecurityProtocol() {
@@ -1096,6 +1125,28 @@ public class KafkaConfiguration {
         this.sessionTimeoutMs = sessionTimeoutMs;
     }
 
+    public Integer getMaxPollRecords() {
+        return maxPollRecords;
+    }
+
+    /**
+     * The maximum number of records returned in a single call to poll()
+     */
+    public void setMaxPollRecords(Integer maxPollRecords) {
+        this.maxPollRecords = maxPollRecords;
+    }
+
+    public Long getPollTimeoutMs() {
+        return pollTimeoutMs;
+    }
+
+    /**
+     * The timeout used when polling the KafkaConsumer.
+     */
+    public void setPollTimeoutMs(Long pollTimeoutMs) {
+        this.pollTimeoutMs = pollTimeoutMs;
+    }
+
     public String getPartitionAssignor() {
         return partitionAssignor;
     }
@@ -1201,5 +1252,19 @@ public class KafkaConfiguration {
      */
     public void setWorkerPoolMaxSize(Integer workerPoolMaxSize) {
         this.workerPoolMaxSize = workerPoolMaxSize;
+    }
+
+    public boolean isRecordMetadata() {
+        return recordMetadata;
+    }
+
+    /**
+     * Whether the producer should store the {@link RecordMetadata} results from sending to Kafka.
+     *
+     * The results are stored in a {@link List} containing the {@link RecordMetadata} metadata's.
+     * The list is stored on a header with the key {@link KafkaConstants#KAFKA_RECORDMETA}
+     */
+    public void setRecordMetadata(boolean recordMetadata) {
+        this.recordMetadata = recordMetadata;
     }
 }

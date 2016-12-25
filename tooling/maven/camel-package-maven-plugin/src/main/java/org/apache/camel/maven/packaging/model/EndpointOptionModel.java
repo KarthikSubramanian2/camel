@@ -28,8 +28,10 @@ public class EndpointOptionModel {
     private String prefix;
     private String multiValue;
     private String deprecated;
+    private String secret;
     private String defaultValue;
     private String description;
+    private String enumValues;
 
     public String getName() {
         return name;
@@ -111,6 +113,14 @@ public class EndpointOptionModel {
         this.deprecated = deprecated;
     }
 
+    public String getSecret() {
+        return secret;
+    }
+
+    public void setSecret(String secret) {
+        this.secret = secret;
+    }
+
     public String getDefaultValue() {
         return defaultValue;
     }
@@ -125,6 +135,14 @@ public class EndpointOptionModel {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getEnumValues() {
+        return enumValues;
+    }
+
+    public void setEnumValues(String enumValues) {
+        this.enumValues = enumValues;
     }
 
     public String getShortJavaType() {

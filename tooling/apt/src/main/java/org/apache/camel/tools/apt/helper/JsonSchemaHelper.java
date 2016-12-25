@@ -41,7 +41,7 @@ public final class JsonSchemaHelper {
     }
 
     public static String toJson(String name, String kind, Boolean required, String type, String defaultValue, String description,
-                                Boolean deprecated, String group, String label, boolean enumType, Set<String> enums,
+                                Boolean deprecated, Boolean secret, String group, String label, boolean enumType, Set<String> enums,
                                 boolean oneOfType, Set<String> oneOffTypes, String optionalPrefix, String prefix, boolean multiValue) {
         String typeName = JsonSchemaHelper.getType(type, enumType);
 
@@ -69,7 +69,8 @@ public final class JsonSchemaHelper {
 
         sb.append(", \"type\": ");
         if ("enum".equals(typeName)) {
-            sb.append(Strings.doubleQuote("string"));
+            String actualType = JsonSchemaHelper.getType(type, false);
+            sb.append(Strings.doubleQuote(actualType));
             sb.append(", \"javaType\": \"" + type + "\"");
             CollectionStringBuffer enumValues = new CollectionStringBuffer();
             for (Object value : enums) {
@@ -115,6 +116,11 @@ public final class JsonSchemaHelper {
         if (deprecated != null) {
             sb.append(", \"deprecated\": ");
             sb.append(Strings.doubleQuote(deprecated.toString()));
+        }
+
+        if (secret != null) {
+            sb.append(", \"secret\": ");
+            sb.append(Strings.doubleQuote(secret.toString()));
         }
 
         if (!Strings.isNullOrEmpty(defaultValue)) {

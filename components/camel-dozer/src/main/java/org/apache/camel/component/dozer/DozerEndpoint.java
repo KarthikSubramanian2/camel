@@ -23,13 +23,10 @@ import java.util.Map;
 
 import javax.el.ExpressionFactory;
 
-import com.sun.el.ExpressionFactoryImpl;
-
 import org.apache.camel.Component;
 import org.apache.camel.Consumer;
 import org.apache.camel.Processor;
 import org.apache.camel.Producer;
-import org.apache.camel.converter.dozer.DozerThreadContextClassLoader;
 import org.apache.camel.converter.dozer.DozerTypeConverterLoader;
 import org.apache.camel.impl.DefaultEndpoint;
 import org.apache.camel.spi.UriEndpoint;
@@ -167,10 +164,11 @@ public class DozerEndpoint extends DefaultEndpoint {
             BeanContainer.getInstance().setElementReader(reader);
         } finally {
             Thread.currentThread().setContextClassLoader(tccl);
-            if (elprop != null)
+            if (elprop != null) {
                 System.setProperty("javax.el.ExpressionFactory", elprop);
-            else
+            } else {
                 System.clearProperty("javax.el.ExpressionFactory");
+            }
         }
     }
 

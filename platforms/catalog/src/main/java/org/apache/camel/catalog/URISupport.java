@@ -42,7 +42,7 @@ public final class URISupport {
     }
 
     /**
-     * Normalizes the URI so unsafe charachters is encoded
+     * Normalizes the URI so unsafe characters is encoded
      *
      * @param uri the input uri
      * @return as URI instance
@@ -230,7 +230,12 @@ public final class URISupport {
                 // the & denote parameter is ended
                 if (ch == '&') {
                     // parameter is ended, as we hit & separator
-                    addParameter(key.toString(), value.toString(), rc, useRaw || isRaw);
+                    String aKey = key.toString();
+                    // the key may be a placeholder of options which we then do not know what is
+                    boolean validKey = !aKey.startsWith("{{") && !aKey.endsWith("}}");
+                    if (validKey) {
+                        addParameter(aKey, value.toString(), rc, useRaw || isRaw);
+                    }
                     key.setLength(0);
                     value.setLength(0);
                     isKey = true;
@@ -249,7 +254,12 @@ public final class URISupport {
 
             // any left over parameters, then add that
             if (key.length() > 0) {
-                addParameter(key.toString(), value.toString(), rc, useRaw || isRaw);
+                String aKey = key.toString();
+                // the key may be a placeholder of options which we then do not know what is
+                boolean validKey = !aKey.startsWith("{{") && !aKey.endsWith("}}");
+                if (validKey) {
+                    addParameter(aKey, value.toString(), rc, useRaw || isRaw);
+                }
             }
 
             return rc;
@@ -300,7 +310,6 @@ public final class URISupport {
      * @return a query string with <tt>key1=value&key2=value2&...</tt>, or an empty string if there is no options.
      * @throws URISyntaxException is thrown if uri has invalid syntax.
      */
-    @SuppressWarnings("unchecked")
     public static String createQueryString(Map<String, String> options, String ampersand, boolean encode) throws URISyntaxException {
         try {
             if (options.size() > 0) {

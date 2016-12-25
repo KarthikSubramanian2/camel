@@ -32,13 +32,11 @@ public class KafkaConsumerBatchSizeTest extends BaseEmbeddedKafkaTest {
 
     public static final String TOPIC = "test";
 
-    @EndpointInject(uri = "kafka:localhost:{{karfkaPort}}?topic=" + TOPIC
+    @EndpointInject(uri = "kafka:localhost:{{kafkaPort}}?topic=" + TOPIC
             + "&groupId=group1"
             + "&autoOffsetReset=earliest"
             + "&autoCommitEnable=false"
-            + "&batchSize=3"
             + "&consumerStreams=10"
-            + "&barrierAwaitTimeoutMs=1000"
     )
     private Endpoint from;
 
@@ -51,7 +49,7 @@ public class KafkaConsumerBatchSizeTest extends BaseEmbeddedKafkaTest {
     public void before() {
         Properties props = new Properties();
 
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:" + getKarfkaPort());
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:" + getKafkaPort());
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaConstants.KAFKA_DEFAULT_SERIALIZER);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaConstants.KAFKA_DEFAULT_SERIALIZER);
         props.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, KafkaConstants.KAFKA_DEFAULT_PARTITIONER);

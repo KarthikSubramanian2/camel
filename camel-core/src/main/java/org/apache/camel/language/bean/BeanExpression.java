@@ -35,7 +35,6 @@ import org.apache.camel.util.KeyValueHolder;
 import org.apache.camel.util.ObjectHelper;
 import org.apache.camel.util.OgnlHelper;
 import org.apache.camel.util.StringHelper;
-import org.apache.camel.util.StringQuoteHelper;
 
 /**
  * Evaluates an expression using a bean method invocation
@@ -382,7 +381,7 @@ public class BeanExpression implements Expression, Predicate {
                             }
                         }
                     }
-                    if (num != null && num >= 0 && list.size() > num - 1) {
+                    if (num != null && num >= 0 && list.size() > num - 1 && list.size() > 0) {
                         return list.get(num);
                     }
                     if (!nullSafe) {

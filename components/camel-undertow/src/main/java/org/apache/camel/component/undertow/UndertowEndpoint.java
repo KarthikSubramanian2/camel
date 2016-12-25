@@ -30,6 +30,7 @@ import org.apache.camel.Message;
 import org.apache.camel.PollingConsumer;
 import org.apache.camel.Processor;
 import org.apache.camel.Producer;
+import org.apache.camel.http.common.cookie.CookieHandler;
 import org.apache.camel.impl.DefaultEndpoint;
 import org.apache.camel.spi.HeaderFilterStrategy;
 import org.apache.camel.spi.HeaderFilterStrategyAware;
@@ -61,17 +62,17 @@ public class UndertowEndpoint extends DefaultEndpoint implements AsyncEndpoint, 
     @UriParam(label = "advanced")
     private UndertowHttpBinding undertowHttpBinding;
     @UriParam(label = "advanced")
-    private HeaderFilterStrategy headerFilterStrategy;
+    private HeaderFilterStrategy headerFilterStrategy = new UndertowHeaderFilterStrategy();
     @UriParam(label = "security")
     private SSLContextParameters sslContextParameters;
     @UriParam(label = "consumer")
     private String httpMethodRestrict;
     @UriParam(label = "consumer", defaultValue = "true")
     private Boolean matchOnUriPrefix = true;
-    @UriParam(label = "producer")
-    private Boolean throwExceptionOnFailure;
-    @UriParam
-    private Boolean transferException;
+    @UriParam(label = "producer", defaultValue = "true")
+    private Boolean throwExceptionOnFailure = Boolean.TRUE;
+    @UriParam(label = "producer", defaultValue = "false")
+    private Boolean transferException = Boolean.FALSE;
     @UriParam(label = "producer", defaultValue = "true")
     private Boolean keepAlive = Boolean.TRUE;
     @UriParam(label = "producer", defaultValue = "true")
@@ -83,6 +84,8 @@ public class UndertowEndpoint extends DefaultEndpoint implements AsyncEndpoint, 
     @UriParam(label = "consumer",
             description = "Specifies whether to enable HTTP OPTIONS for this Servlet consumer. By default OPTIONS is turned off.")
     private boolean optionsEnabled;
+    @UriParam(label = "producer")
+    private CookieHandler cookieHandler;
 
     public UndertowEndpoint(String uri, UndertowComponent component) throws URISyntaxException {
         super(uri, component);
@@ -179,7 +182,6 @@ public class UndertowEndpoint extends DefaultEndpoint implements AsyncEndpoint, 
      */
     public void setHeaderFilterStrategy(HeaderFilterStrategy headerFilterStrategy) {
         this.headerFilterStrategy = headerFilterStrategy;
-        undertowHttpBinding.setHeaderFilterStrategy(headerFilterStrategy);
     }
 
     public SSLContextParameters getSslContextParameters() {
@@ -218,6 +220,12 @@ public class UndertowEndpoint extends DefaultEndpoint implements AsyncEndpoint, 
     }
 
     public UndertowHttpBinding getUndertowHttpBinding() {
+        if (undertowHttpBinding == null) {
+            // create a new binding and use the options from this endpoint
+            undertowHttpBinding = new DefaultUndertowHttpBinding();
+            undertowHttpBinding.setHeaderFilterStrategy(getHeaderFilterStrategy());
+            undertowHttpBinding.setTransferException(getTransferException());
+        }
         return undertowHttpBinding;
     }
 
@@ -282,6 +290,17 @@ public class UndertowEndpoint extends DefaultEndpoint implements AsyncEndpoint, 
      */
     public void setOptionsEnabled(boolean optionsEnabled) {
         this.optionsEnabled = optionsEnabled;
+    }
+
+    public CookieHandler getCookieHandler() {
+        return cookieHandler;
+    }
+
+    /**
+     * Configure a cookie handler to maintain a HTTP session
+     */
+    public void setCookieHandler(CookieHandler cookieHandler) {
+        this.cookieHandler = cookieHandler;
     }
 
     @Override

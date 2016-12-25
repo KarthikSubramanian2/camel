@@ -26,15 +26,17 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import org.apache.camel.Service;
 import org.apache.camel.component.salesforce.SalesforceHttpClient;
 import org.apache.camel.component.salesforce.SalesforceLoginConfig;
 import org.apache.camel.component.salesforce.api.SalesforceException;
 import org.apache.camel.component.salesforce.api.dto.RestError;
+import org.apache.camel.component.salesforce.api.utils.JsonUtils;
 import org.apache.camel.component.salesforce.internal.dto.LoginError;
 import org.apache.camel.component.salesforce.internal.dto.LoginToken;
 import org.apache.camel.util.ObjectHelper;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.eclipse.jetty.client.HttpConversation;
 import org.eclipse.jetty.client.api.ContentResponse;
 import org.eclipse.jetty.client.api.Request;
@@ -81,11 +83,10 @@ public class SalesforceSession implements Service {
         String loginUrl = config.getLoginUrl();
         config.setLoginUrl(loginUrl.endsWith("/") ? loginUrl.substring(0, loginUrl.length() - 1) : loginUrl);
 
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = JsonUtils.createObjectMapper();
         this.listeners = new CopyOnWriteArraySet<SalesforceSessionListener>();
     }
 
-    @SuppressWarnings("unchecked")
     public synchronized String login(String oldToken) throws SalesforceException {
 
         // check if we need a new session

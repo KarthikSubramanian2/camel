@@ -22,7 +22,7 @@
   <parent>
     <groupId>org.apache.camel</groupId>
     <artifactId>camel-parent</artifactId>
-    <version>2.18-SNAPSHOT</version>
+    <version>2.19.0-SNAPSHOT</version>
     <relativePath>../parent</relativePath>
   </parent>
 
@@ -63,6 +63,7 @@
     <module>camel-ahc-ws</module>
     <module>camel-amqp</module>
     <module>camel-apns</module>
+    <module>camel-asterisk</module>
     <module>camel-atmos</module>
     <module>camel-atmosphere-websocket</module>
     <module>camel-atom</module>
@@ -74,6 +75,7 @@
     <module>camel-bean-validator</module>
     <module>camel-barcode</module>
     <module>camel-bindy</module>
+    <module>camel-bonita</module>
     <module>camel-boon</module>
     <module>camel-box</module>
     <module>camel-braintree</module>
@@ -81,11 +83,13 @@
     <module>camel-cassandraql</module>
     <module>camel-castor</module>
     <module>camel-cdi</module>
+    <module>camel-chronicle</module>
     <module>camel-chunk</module>
     <module>camel-cm-sms</module>
     <module>camel-cmis</module>
     <module>camel-coap</module>
     <module>camel-cometd</module>
+    <module>camel-consul</module>
     <module>camel-context</module>
     <module>camel-couchdb</module>
     <module>camel-crypto</module>
@@ -94,6 +98,7 @@
     <module>camel-dns</module>
     <module>camel-docker</module>
     <module>camel-dozer</module>
+    <module>camel-drill</module>
     <module>camel-dropbox</module>
     <module>camel-eclipse</module>
     <module>camel-ehcache</module>
@@ -116,6 +121,7 @@
     <module>camel-google-calendar</module>
     <module>camel-google-drive</module>
     <module>camel-google-mail</module>
+    <module>camel-google-pubsub</module>
     <module>camel-gora</module>
     <module>camel-grape</module>
     <module>camel-gson</module>
@@ -133,6 +139,7 @@
     <module>camel-ical</module>
     <module>camel-ignite</module>
     <module>camel-infinispan</module>
+    <module>camel-influxdb</module>
     <module>camel-irc</module>
     <module>camel-ironmq</module>
     <module>camel-jackson</module>
@@ -152,6 +159,7 @@
     <module>camel-jira</module>
     <module>camel-jmx</module>
     <module>camel-jolt</module>
+    <module>camel-johnzon</module>
     <module>camel-josql</module>
     <module>camel-jpa</module>
     <module>camel-jsonpath</module>
@@ -168,6 +176,7 @@
     <module>camel-leveldb</module>
     <module>camel-linkedin</module>
     <module>camel-lucene</module>
+    <module>camel-lumberjack</module>
     <module>camel-lzf</module>
     <module>camel-mail</module>
     <module>camel-metrics</module>
@@ -175,6 +184,7 @@
     <module>camel-mina2</module>
     <module>camel-mllp</module>
     <module>camel-mongodb</module>
+    <module>camel-mongodb3</module>
     <module>camel-mongodb-gridfs</module>
     <module>camel-mqtt</module>
     <module>camel-msv</module>
@@ -190,6 +200,7 @@
     <module>camel-ognl</module>
     <module>camel-olingo2</module>
     <module>camel-openshift</module>
+    <module>camel-openstack</module>
     <module>camel-optaplanner</module>
     <module>camel-paho</module>
     <module>camel-paxlogging</module>
@@ -202,6 +213,7 @@
     <module>camel-quickfix</module>
     <module>camel-rabbitmq</module>
     <module>camel-restlet</module>
+    <module>camel-ribbon</module>
     <module>camel-rmi</module>
     <module>camel-routebox</module>
     <module>camel-rss</module>
@@ -230,7 +242,7 @@
     <module>camel-splunk</module>
     <module>camel-spring-batch</module>
     <module>camel-spring-boot</module>
-    <module>camel-spring-boot-starter</module>
+    <module>camel-spring-cloud</module>
     <module>camel-spring-javaconfig</module>
     <module>camel-spring-integration</module>
     <module>camel-spring-ldap</module>
@@ -266,7 +278,6 @@
     <module>camel-yammer</module>
     <module>camel-zipfile</module>
     <module>camel-zipkin</module>
-    <module>camel-zipkin-starter</module>
     <module>camel-zookeeper</module>
   </modules>
 
@@ -277,6 +288,10 @@
         <groupId>org.apache.camel</groupId>
         <artifactId>camel-package-maven-plugin</artifactId>
         <version>${project.version}</version>
+        <configuration>
+            <!-- set to true to make build fail fast if missing documentation in docs files -->
+            <failFast>false</failFast>
+        </configuration>
         <executions>
           <execution>
             <id>prepare</id>
@@ -284,15 +299,17 @@
               <goal>prepare-components</goal>
             </goals>
             <phase>generate-resources</phase>
-         </execution>
+          </execution>
           <execution>
             <id>validate</id>
             <goals>
               <goal>validate-components</goal>
+              <goal>prepare-spring-boot-starter</goal>
+              <goal>prepare-spring-boot-auto-configuration</goal>
             </goals>
             <phase>prepare-package</phase>
-         </execution>
-         <execution>
+          </execution>
+          <execution>
             <id>readme</id>
             <goals>
               <goal>update-readme</goal>
@@ -315,7 +332,7 @@
       </activation>
 
       <dependencies>
-        <!-- enable the APT processor -->
+        <!-- enable Camel APT processors -->
         <dependency>
           <groupId>org.apache.camel</groupId>
           <artifactId>apt</artifactId>
@@ -324,5 +341,26 @@
         </dependency>
       </dependencies>
     </profile>
+    <profile>
+      <id>validate</id>
+      <build>
+        <plugins>           
+          <!-- to validate Camel endpoints: mvn camel:validate -Pvalidate -->
+          <plugin>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-maven-plugin</artifactId>
+            <version>${project.version}</version>
+            <configuration>
+              <failOnError>false</failOnError>
+              <includeTest>true</includeTest>
+              <includeXml>true</includeXml>
+              <ignoreLenientProperties>false</ignoreLenientProperties>
+              <excludes>.*custom-exchange-formatter-context\.xml</excludes>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
   </profiles>
+
 </project>

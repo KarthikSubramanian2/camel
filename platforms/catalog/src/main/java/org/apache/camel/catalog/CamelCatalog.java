@@ -23,10 +23,21 @@ import java.util.Set;
 import javax.management.MXBean;
 
 /**
- * Catalog of components, data formats, models (EIPs), languages, and more  from this Apache Camel release.
+ * Catalog of components, data formats, models (EIPs), languages, and more from this Apache Camel release.
  */
 @MXBean
 public interface CamelCatalog {
+
+    /**
+     * To plugin a custom {@link RuntimeProvider} that amends the catalog to only include information that is supported on the runtime.
+     */
+    void setRuntimeProvider(RuntimeProvider provider);
+
+    /**
+     * Gets the {@link RuntimeProvider} in use.
+     * @return
+     */
+    RuntimeProvider getRuntimeProvider();
 
     /**
      * Enables caching of the resources which makes the catalog faster, but keeps data in memory during caching.
@@ -36,9 +47,29 @@ public interface CamelCatalog {
     void enableCache();
 
     /**
+     * Whether caching has been enabled.
+     */
+    boolean isCaching();
+
+    /**
      * To plugin a custom {@link SuggestionStrategy} to provide suggestion for unknown options
      */
     void setSuggestionStrategy(SuggestionStrategy suggestionStrategy);
+
+    /**
+     * Gets the {@link SuggestionStrategy} in use
+     */
+    SuggestionStrategy getSuggestionStrategy();
+
+    /**
+     * To plugin a custom {@link VersionManager} to load other versions of Camel the catalog should use.
+     */
+    void setVersionManager(VersionManager versionManager);
+
+    /**
+     * Gets the {@link VersionManager} in use
+     */
+    VersionManager getVersionManager();
 
     /**
      * Adds a 3rd party component to this catalog.
@@ -49,6 +80,15 @@ public interface CamelCatalog {
     void addComponent(String name, String className);
 
     /**
+     * Adds a 3rd party component to this catalog.
+     *
+     * @param name       the component name
+     * @param className  the fully qualified class name for the component class
+     * @param jsonSchema the component JSon schema
+     */
+    void addComponent(String name, String className, String jsonSchema);
+
+    /**
      * Adds a 3rd party data format to this catalog.
      *
      * @param name      the data format name
@@ -57,9 +97,37 @@ public interface CamelCatalog {
     void addDataFormat(String name, String className);
 
     /**
+     * Adds a 3rd party data format to this catalog.
+     *
+     * @param name      the data format name
+     * @param className the fully qualified class name for the data format class
+     * @param jsonSchema the data format JSon schema
+     */
+    void addDataFormat(String name, String className, String jsonSchema);
+
+    /**
      * The version of this Camel Catalog
      */
     String getCatalogVersion();
+
+    /**
+     * Attempt to load the Camel version to be used by the catalog.
+     * <p/>
+     * Loading the camel-catalog JAR of the given version of choice may require internet access
+     * to download the JAR from Maven central. You can pre download the JAR and install in a local
+     * Maven repository to avoid internet access for offline environments.
+     * <p/>
+     * When loading a new version the cache will be invalidated.
+     *
+     * @param version  the Camel version such as <tt>2.17.1</tt>
+     * @return <tt>true</tt> if the version was loaded, <tt>false</tt> if not.
+     */
+    boolean loadVersion(String version);
+
+    /**
+     * Gets the current loaded Camel version used by the catalog.
+     */
+    String getLoadedVersion();
 
     /**
      * Find all the component names from the Camel catalog
@@ -134,6 +202,30 @@ public interface CamelCatalog {
     String modelJSonSchema(String name);
 
     /**
+     * Returns the component documentation as Ascii doc format.
+     *
+     * @param name the component name
+     * @return component documentation in ascii doc format.
+     */
+    String componentAsciiDoc(String name);
+
+    /**
+     * Returns the data format documentation as Ascii doc format.
+     *
+     * @param name the data format name
+     * @return data format documentation in ascii doc format.
+     */
+    String dataFormatAsciiDoc(String name);
+
+    /**
+     * Returns the language documentation as Ascii doc format.
+     *
+     * @param name the language name
+     * @return language documentation in ascii doc format.
+     */
+    String languageAsciiDoc(String name);
+
+    /**
      * Find all the unique label names all the components are using.
      *
      * @return a set of all the labels.
@@ -148,7 +240,7 @@ public interface CamelCatalog {
     Set<String> findDataFormatLabels();
 
     /**
-     * Find all the unique label names all the data formats are using.
+     * Find all the unique label names all the languages are using.
      *
      * @return a set of all the labels.
      */

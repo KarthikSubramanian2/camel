@@ -16,6 +16,11 @@
  */
 package org.apache.camel.component.etcd;
 
+import java.net.URI;
+
+import mousio.etcd4j.EtcdClient;
+import mousio.etcd4j.EtcdSecurityContext;
+import org.apache.camel.CamelContext;
 import org.apache.camel.spi.UriParam;
 import org.apache.camel.spi.UriParams;
 import org.apache.camel.util.jsse.SSLContextParameters;
@@ -27,9 +32,9 @@ public class EtcdConfiguration {
     private String uris = EtcdConstants.ETCD_DEFAULT_URIS;
     @UriParam(label = "security")
     private SSLContextParameters sslContextParameters;
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String userName;
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String password;
     @UriParam(label = "consumer")
     private boolean sendEmptyExchangeOnTimeout;
@@ -41,6 +46,18 @@ public class EtcdConfiguration {
     private Long timeout;
     @UriParam(label = "consumer,advanced", defaultValue = "0")
     private Long fromIndex = 0L;
+    @UriParam(defaultValue = "/services/")
+    private String servicePath = "/services/";
+
+    private final CamelContext camelContext;
+
+    public EtcdConfiguration(CamelContext camelContext) {
+        this.camelContext = camelContext;
+    }
+
+    public CamelContext getCamelContext() {
+        return this.camelContext;
+    }
 
     public String getUris() {
         return uris;
@@ -123,6 +140,10 @@ public class EtcdConfiguration {
         return timeout;
     }
 
+    public boolean hasTimeout() {
+        return timeout != null && timeout > 0;
+    }
+
     /**
      * To set the maximum time an action could take to complete.
      */
@@ -139,5 +160,43 @@ public class EtcdConfiguration {
      */
     public void setFromIndex(Long fromIndex) {
         this.fromIndex = fromIndex;
+    }
+
+    public String getServicePath() {
+        return servicePath;
+    }
+
+    /**
+     * The path to look for for service discovery
+     */
+    public void setServicePath(String servicePath) {
+        this.servicePath = servicePath;
+    }
+
+    public EtcdClient createClient() throws Exception {
+        String[] uris;
+        if (getUris() != null) {
+            uris = getUris().split(",");
+        } else {
+            uris = EtcdConstants.ETCD_DEFAULT_URIS.split(",");
+        }
+
+        URI[] etcdUriList = new URI[uris.length];
+
+        for (int i = 0; i < uris.length; i++) {
+            etcdUriList[i] = camelContext != null
+                ? URI.create(camelContext.resolvePropertyPlaceholders(uris[i]))
+                : URI.create(uris[i]);
+        }
+
+        return new EtcdClient(
+            new EtcdSecurityContext(
+                sslContextParameters != null
+                    ? sslContextParameters.createSSLContext(camelContext)
+                    : null,
+                userName,
+                password),
+            etcdUriList
+        );
     }
 }

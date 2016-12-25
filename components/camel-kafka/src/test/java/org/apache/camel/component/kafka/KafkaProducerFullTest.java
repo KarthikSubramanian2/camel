@@ -17,8 +17,10 @@
 package org.apache.camel.component.kafka;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CountDownLatch;
@@ -26,18 +28,17 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.camel.Endpoint;
 import org.apache.camel.EndpointInject;
+import org.apache.camel.Exchange;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
-import org.apache.camel.RoutesBuilder;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.producer.RecordMetadata;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class KafkaProducerFullTest extends BaseEmbeddedKafkaTest {
 
@@ -45,19 +46,17 @@ public class KafkaProducerFullTest extends BaseEmbeddedKafkaTest {
     private static final String TOPIC_STRINGS_IN_HEADER = "testHeader";
     private static final String TOPIC_BYTES = "testBytes";
     private static final String TOPIC_BYTES_IN_HEADER = "testBytesHeader";
-    private static final String GROUP_STRINGS = "groupStrings";
     private static final String GROUP_BYTES = "groupStrings";
-
-    private static final Logger LOG = LoggerFactory.getLogger(KafkaProducerFullTest.class);
 
     private static KafkaConsumer<String, String> stringsConsumerConn;
     private static KafkaConsumer<byte[], byte[]> bytesConsumerConn;
 
-    @EndpointInject(uri = "kafka:localhost:{{karfkaPort}}?topic=" + TOPIC_STRINGS
+    @EndpointInject(uri = "kafka:localhost:{{kafkaPort}}?topic=" + TOPIC_STRINGS
             + "&requestRequiredAcks=-1")
     private Endpoint toStrings;
-
-    @EndpointInject(uri = "kafka:localhost:{{karfkaPort}}?topic=" + TOPIC_BYTES + "&requestRequiredAcks=-1"
+    @EndpointInject(uri = "mock:kafkaAck")
+    private MockEndpoint mockEndpoint;
+    @EndpointInject(uri = "kafka:localhost:{{kafkaPort}}?topic=" + TOPIC_BYTES + "&requestRequiredAcks=-1"
             + "&serializerClass=org.apache.kafka.common.serialization.ByteArraySerializer&"
             + "keySerializerClass=org.apache.kafka.common.serialization.ByteArraySerializer")
     private Endpoint toBytes;
@@ -72,7 +71,7 @@ public class KafkaProducerFullTest extends BaseEmbeddedKafkaTest {
     public static void before() {
         Properties stringsProps = new Properties();
 
-        stringsProps.put(org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:" + getKarfkaPort());
+        stringsProps.put(org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:" + getKafkaPort());
         stringsProps.put(org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG, "DemoConsumer");
         stringsProps.put(org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "true");
         stringsProps.put(org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, "1000");
@@ -97,13 +96,13 @@ public class KafkaProducerFullTest extends BaseEmbeddedKafkaTest {
     }
 
     @Override
-    protected RoutesBuilder createRouteBuilder() throws Exception {
+    protected RouteBuilder createRouteBuilder() throws Exception {
         return new RouteBuilder() {
             @Override
             public void configure() throws Exception {
-                from("direct:startStrings").to(toStrings);
+                from("direct:startStrings").to(toStrings).to(mockEndpoint);
 
-                from("direct:startBytes").to(toBytes);
+                from("direct:startBytes").to(toBytes).to(mockEndpoint);
             }
         };
     }
@@ -123,6 +122,60 @@ public class KafkaProducerFullTest extends BaseEmbeddedKafkaTest {
         boolean allMessagesReceived = messagesLatch.await(200, TimeUnit.MILLISECONDS);
 
         assertTrue("Not all messages were published to the kafka topics. Not received: " + messagesLatch.getCount(), allMessagesReceived);
+
+        List<Exchange> exchangeList = mockEndpoint.getExchanges();
+        assertEquals("Fifteen Exchanges are expected", exchangeList.size(), 15);
+        for (Exchange exchange : exchangeList) {
+            @SuppressWarnings("unchecked")
+            List<RecordMetadata> recordMetaData1 = (List<RecordMetadata>) (exchange.getIn().getHeader(KafkaConstants.KAFKA_RECORDMETA));
+            assertEquals("One RecordMetadata is expected.", recordMetaData1.size(), 1);
+            assertTrue("Offset is positive", recordMetaData1.get(0).offset() >= 0);
+            assertTrue("Topic Name start with 'test'", recordMetaData1.get(0).topic().startsWith("test"));
+        }
+    }
+
+    @Test
+    public void producedStringCollectionMessageIsReceivedByKafka() throws InterruptedException, IOException {
+        int messageInTopic = 10;
+        int messageInOtherTopic = 5;
+
+        CountDownLatch messagesLatch = new CountDownLatch(messageInTopic + messageInOtherTopic);
+
+        List<String> msgs = new ArrayList<String>();
+        for (int x = 0; x < messageInTopic; x++) {
+            msgs.add("Message " + x);
+        }
+
+        sendMessagesInRoute(1, stringsTemplate, msgs, KafkaConstants.PARTITION_KEY, "1");
+        msgs = new ArrayList<String>();
+        for (int x = 0; x < messageInOtherTopic; x++) {
+            msgs.add("Other Message " + x);
+        }
+        sendMessagesInRoute(1, stringsTemplate, msgs, KafkaConstants.PARTITION_KEY, "1", KafkaConstants.TOPIC, TOPIC_STRINGS_IN_HEADER);
+
+        createKafkaMessageConsumer(stringsConsumerConn, TOPIC_STRINGS, TOPIC_STRINGS_IN_HEADER, messagesLatch);
+
+        boolean allMessagesReceived = messagesLatch.await(200, TimeUnit.MILLISECONDS);
+
+        assertTrue("Not all messages were published to the kafka topics. Not received: " + messagesLatch.getCount(), allMessagesReceived);
+        List<Exchange> exchangeList = mockEndpoint.getExchanges();
+        assertEquals("Two Exchanges are expected", exchangeList.size(), 2);
+        Exchange e1 = exchangeList.get(0);
+        @SuppressWarnings("unchecked")
+        List<RecordMetadata> recordMetaData1 = (List<RecordMetadata>) (e1.getIn().getHeader(KafkaConstants.KAFKA_RECORDMETA));
+        assertEquals("Ten RecordMetadata is expected.", recordMetaData1.size(), 10);
+        for (RecordMetadata recordMeta : recordMetaData1) {
+            assertTrue("Offset is positive", recordMeta.offset() >= 0);
+            assertTrue("Topic Name start with 'test'", recordMeta.topic().startsWith("test"));
+        }
+        Exchange e2 = exchangeList.get(1);
+        @SuppressWarnings("unchecked")
+        List<RecordMetadata> recordMetaData2 = (List<RecordMetadata>) (e2.getIn().getHeader(KafkaConstants.KAFKA_RECORDMETA));
+        assertEquals("Five RecordMetadata is expected.", recordMetaData2.size(), 5);
+        for (RecordMetadata recordMeta : recordMetaData2) {
+            assertTrue("Offset is positive", recordMeta.offset() >= 0);
+            assertTrue("Topic Name start with 'test'", recordMeta.topic().startsWith("test"));
+        }
     }
 
     @Test
@@ -146,6 +199,16 @@ public class KafkaProducerFullTest extends BaseEmbeddedKafkaTest {
         boolean allMessagesReceived = messagesLatch.await(200, TimeUnit.MILLISECONDS);
 
         assertTrue("Not all messages were published to the kafka topics. Not received: " + messagesLatch.getCount(), allMessagesReceived);
+
+        List<Exchange> exchangeList = mockEndpoint.getExchanges();
+        assertEquals("Fifteen Exchanges are expected", exchangeList.size(), 15);
+        for (Exchange exchange : exchangeList) {
+            @SuppressWarnings("unchecked")
+            List<RecordMetadata> recordMetaData1 = (List<RecordMetadata>) (exchange.getIn().getHeader(KafkaConstants.KAFKA_RECORDMETA));
+            assertEquals("One RecordMetadata is expected.", recordMetaData1.size(), 1);
+            assertTrue("Offset is positive", recordMetaData1.get(0).offset() >= 0);
+            assertTrue("Topic Name start with 'test'", recordMetaData1.get(0).topic().startsWith("test"));
+        }
     }
 
     private void createKafkaMessageConsumer(KafkaConsumer<String, String> consumerConn,
@@ -156,7 +219,7 @@ public class KafkaProducerFullTest extends BaseEmbeddedKafkaTest {
 
         while (run) {
             ConsumerRecords<String, String> records = consumerConn.poll(100);
-            for (ConsumerRecord<String, String> record : records) {
+            for (int i = 0; i < records.count(); i++) {
                 messagesLatch.countDown();
                 if (messagesLatch.getCount() == 0) {
                     run = false;
@@ -174,7 +237,7 @@ public class KafkaProducerFullTest extends BaseEmbeddedKafkaTest {
 
         while (run) {
             ConsumerRecords<byte[], byte[]> records = consumerConn.poll(100);
-            for (ConsumerRecord<byte[], byte[]> record : records) {
+            for (int i = 0; i < records.count(); i++) {
                 messagesLatch.countDown();
                 if (messagesLatch.getCount() == 0) {
                     run = false;

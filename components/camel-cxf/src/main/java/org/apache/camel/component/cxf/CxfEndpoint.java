@@ -18,6 +18,8 @@ package org.apache.camel.component.cxf;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -25,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.net.ssl.HostnameVerifier;
 import javax.wsdl.Definition;
 import javax.wsdl.WSDLException;
 import javax.xml.namespace.QName;
@@ -41,13 +44,13 @@ import javax.xml.ws.WebServiceProvider;
 import javax.xml.ws.handler.Handler;
 
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 
 import org.apache.camel.AsyncEndpoint;
 import org.apache.camel.CamelContext;
 import org.apache.camel.CamelException;
 import org.apache.camel.Consumer;
+import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.Processor;
 import org.apache.camel.Producer;
@@ -58,6 +61,7 @@ import org.apache.camel.component.cxf.common.message.CxfConstants;
 import org.apache.camel.component.cxf.feature.CXFMessageDataFormatFeature;
 import org.apache.camel.component.cxf.feature.PayLoadDataFormatFeature;
 import org.apache.camel.component.cxf.feature.RAWDataFormatFeature;
+import org.apache.camel.http.common.cookie.CookieHandler;
 import org.apache.camel.impl.DefaultEndpoint;
 import org.apache.camel.impl.SynchronousDelegateProducer;
 import org.apache.camel.spi.HeaderFilterStrategy;
@@ -69,6 +73,7 @@ import org.apache.camel.util.CastUtils;
 import org.apache.camel.util.EndpointHelper;
 import org.apache.camel.util.ObjectHelper;
 import org.apache.camel.util.UnsafeUriCharactersEncoder;
+import org.apache.camel.util.jsse.SSLContextParameters;
 import org.apache.cxf.Bus;
 import org.apache.cxf.BusFactory;
 import org.apache.cxf.binding.BindingConfiguration;
@@ -163,6 +168,10 @@ public class CxfEndpoint extends DefaultEndpoint implements AsyncEndpoint, Heade
     private String defaultOperationNamespace;
     @UriParam(label = "producer")
     private boolean wrapped;
+    @UriParam(label = "producer")
+    private SSLContextParameters sslContextParameters;
+    @UriParam(label = "producer")
+    private HostnameVerifier hostnameVerifier;
     @UriParam
     private Boolean wrappedStyle;
     @UriParam(label = "advanced")
@@ -189,12 +198,14 @@ public class CxfEndpoint extends DefaultEndpoint implements AsyncEndpoint, Heade
     private CxfEndpointConfigurer cxfEndpointConfigurer;
     @UriParam(label = "advanced", defaultValue = "30000")
     private long continuationTimeout = 30000;
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String username;
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String password;
     @UriParam(label = "advanced", prefix = "properties.", multiValue = true)
     private Map<String, Object> properties;
+    @UriParam(label = "producer")
+    private CookieHandler cookieHandler;
 
     public CxfEndpoint() {
         setExchangePattern(ExchangePattern.InOut);
@@ -372,9 +383,7 @@ public class CxfEndpoint extends DefaultEndpoint implements AsyncEndpoint, Heade
 
         sfb.setBus(getBus());
         sfb.setStart(false);
-        if (getCxfEndpointConfigurer() != null) {
-            getCxfEndpointConfigurer().configure(sfb);
-        }
+        getNullSafeCxfEndpointConfigurer().configure(sfb);
     }
 
     /**
@@ -569,9 +578,8 @@ public class CxfEndpoint extends DefaultEndpoint implements AsyncEndpoint, Heade
         }
 
         factoryBean.setBus(getBus());
-        if (getCxfEndpointConfigurer() != null) {
-            getCxfEndpointConfigurer().configure(factoryBean);
-        }
+
+        getNullSafeCxfEndpointConfigurer().configure(factoryBean);
     }
 
     // Package private methods
@@ -1063,6 +1071,17 @@ public class CxfEndpoint extends DefaultEndpoint implements AsyncEndpoint, Heade
         }
     }
 
+    public CookieHandler getCookieHandler() {
+        return cookieHandler;
+    }
+
+    /**
+     * Configure a cookie handler to maintain a HTTP session
+     */
+    public void setCookieHandler(CookieHandler cookieHandler) {
+        this.cookieHandler = cookieHandler;
+    }
+
     @Override
     protected void doStart() throws Exception {
         if (headerFilterStrategy == null) {
@@ -1130,6 +1149,21 @@ public class CxfEndpoint extends DefaultEndpoint implements AsyncEndpoint, Heade
      */
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public CxfEndpointConfigurer getChainedCxfEndpointConfigurer() {
+        return ChainedCxfEndpointConfigurer
+                .create(getNullSafeCxfEndpointConfigurer(),
+                        SslCxfEndpointConfigurer.create(sslContextParameters, getCamelContext()))
+                .addChild(HostnameVerifierCxfEndpointConfigurer.create(hostnameVerifier));
+    }
+
+    private CxfEndpointConfigurer getNullSafeCxfEndpointConfigurer() {
+        if (cxfEndpointConfigurer == null) {
+            return new ChainedCxfEndpointConfigurer.NullCxfEndpointConfigurer();
+        } else {
+            return cxfEndpointConfigurer;
+        }
     }
 
     /**
@@ -1202,7 +1236,7 @@ public class CxfEndpoint extends DefaultEndpoint implements AsyncEndpoint, Heade
                 super.setParameters(params, message);
             }
 
-            message.remove(DataFormat.class);
+            message.remove(DataFormat.class.getName());
         }
 
         private String findName(List<Source> sources, int i) {
@@ -1213,7 +1247,7 @@ public class CxfEndpoint extends DefaultEndpoint implements AsyncEndpoint, Heade
                 if (nd instanceof Document) {
                     nd = ((Document)nd).getDocumentElement();
                 }
-                return ((Element)nd).getLocalName();
+                return nd.getLocalName();
             } else if (source instanceof StaxSource) {
                 StaxSource s = (StaxSource)source;
                 r = s.getXMLStreamReader();
@@ -1397,4 +1431,42 @@ public class CxfEndpoint extends DefaultEndpoint implements AsyncEndpoint, Heade
         this.continuationTimeout = continuationTimeout;
     }
 
+    public SSLContextParameters getSslContextParameters() {
+        return sslContextParameters;
+    }
+
+    /**
+     * The Camel SSL setting reference. Use the # notation to reference the SSL Context.
+     */
+    public void setSslContextParameters(SSLContextParameters sslContextParameters) {
+        this.sslContextParameters = sslContextParameters;
+    }
+
+    public HostnameVerifier getHostnameVerifier() {
+        return hostnameVerifier;
+    }
+
+    /**
+     * The hostname verifier to be used. Use the # notation to reference a HostnameVerifier
+     * from the registry.
+     */
+    public void setHostnameVerifier(HostnameVerifier hostnameVerifier) {
+        this.hostnameVerifier = hostnameVerifier;
+    }
+
+    /**
+     * get the request uri for a given exchange.
+     */
+    URI getRequestUri(Exchange camelExchange) {
+        String uriString = camelExchange.getIn().getHeader(Exchange.DESTINATION_OVERRIDE_URL, String.class);
+        if (uriString == null) {
+            uriString = getAddress();
+        }
+        try {
+            return new URI(uriString);
+        } catch (URISyntaxException e) {
+            LOG.error("cannot determine request URI", e);
+            return null;
+        }
+    }
 }

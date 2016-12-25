@@ -31,21 +31,23 @@ public class SftpConfiguration extends RemoteFileConfiguration {
 
     public static final int DEFAULT_SFTP_PORT = 22;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String knownHostsFile;
-    @UriParam(label = "security")
+    @UriParam(label = "security", defaultValue = "true")
+    private boolean useUserKnownHostsFile = true;
+    @UriParam(label = "security", secret = true)
     private String knownHostsUri;
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private byte[] knownHosts;
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String privateKeyFile;
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String privateKeyUri;
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private byte[] privateKey;
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String privateKeyPassphrase;
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private KeyPair keyPair;
     @UriParam(defaultValue = "no", enums = "no,yes", label = "security")
     private String strictHostKeyChecking = "no";
@@ -94,6 +96,17 @@ public class SftpConfiguration extends RemoteFileConfiguration {
 
     public String getKnownHostsUri() {
         return knownHostsUri;
+    }
+
+    public boolean isUseUserKnownHostsFile() {
+        return useUserKnownHostsFile;
+    }
+
+    /**
+     * If knownHostFile has not been explicit configured then use the host file from System.getProperty(user.home)/.ssh/known_hosts
+     */
+    public void setUseUserKnownHostsFile(boolean useUserKnownHostsFile) {
+        this.useUserKnownHostsFile = useUserKnownHostsFile;
     }
 
     /**

@@ -23,7 +23,7 @@
   <parent>
     <groupId>org.apache.camel</groupId>
     <artifactId>camel-parent</artifactId>
-    <version>2.18-SNAPSHOT</version>
+    <version>2.19.0-SNAPSHOT</version>
     <relativePath>../parent</relativePath>
   </parent>
 
@@ -34,6 +34,17 @@
 
   <properties>
     <camel.osgi.export.pkg>
+      !org.apache.camel.component.direct.springboot,
+      !org.apache.camel.component.directvm.springboot,
+      !org.apache.camel.component.log.springboot,
+      !org.apache.camel.component.properties.springboot,
+      !org.apache.camel.component.scheduler.springboot,
+      !org.apache.camel.component.seda.springboot,
+      !org.apache.camel.component.stub.springboot,
+      !org.apache.camel.component.validator.springboot,
+      !org.apache.camel.component.vm.springboot,
+      !org.apache.camel.component.xslt.springboot,
+      !org.apache.camel.impl.springboot,
       !org.apache.camel.tools.*,
       org.apache.camel.*;-noimport:=true
     </camel.osgi.export.pkg>
@@ -153,10 +164,20 @@
       <scope>test</scope>
     </dependency>
 
-    <!-- logging -->
+    <!-- logging -->         
     <dependency>
-      <groupId>org.slf4j</groupId>
-      <artifactId>slf4j-log4j12</artifactId>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-api</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.logging.log4j</groupId>
+      <artifactId>log4j-slf4j-impl</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -290,12 +311,6 @@
         </configuration>
       </plugin>
 
-      <!--<classesDirectory>${project.build.outputDirectory}</classesDirectory>-->
-      <!--<classesDirectory>${project.build}/generated/camel/components</classesDirectory>-->
-      <!--<classesDirectory>${project.build}/generated/camel/dataformats</classesDirectory>-->
-      <!--<classesDirectory>${project.build}/generated/camel/languages</classesDirectory>-->
-      <!--<classesDirectory>${project.build}/generated/camel/models</classesDirectory>-->
-
       <plugin>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
@@ -355,6 +370,8 @@
             <id>validate</id>
             <goals>
               <goal>validate-components</goal>
+              <goal>prepare-spring-boot-starter</goal>
+              <goal>prepare-spring-boot-auto-configuration</goal>
             </goals>
             <phase>prepare-package</phase>
           </execution>
@@ -437,8 +454,25 @@
     </plugins>
   </reporting>
 
-
   <profiles>
+    <profile>
+      <id>validate</id>
+      <build>
+        <plugins>
+          <!-- to validate Camel endpoints: mvn camel:validate -Pvalidate -->
+          <plugin>
+            <groupId>org.apache.camel</groupId>
+            <artifactId>camel-maven-plugin</artifactId>
+            <version>${project.version}</version>
+            <configuration>
+              <failOnError>true</failOnError>
+              <includeTest>true</includeTest>
+              <ignoreLenientProperties>false</ignoreLenientProperties>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
     <profile>
       <id>release</id>
       <build>
@@ -534,10 +568,18 @@
       </activation>
 
       <dependencies>
+
         <!-- enable the APT processor -->
         <dependency>
           <groupId>org.apache.camel</groupId>
           <artifactId>apt</artifactId>
+          <scope>provided</scope>
+        </dependency>
+        <!-- enable Spring Boot configuration APT processor -->
+        <dependency>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-configuration-processor</artifactId>
+          <version>${spring-boot-version}</version>
           <scope>provided</scope>
         </dependency>
       </dependencies>

@@ -82,9 +82,13 @@ public class RabbitMQDeclareSupport {
     private boolean shouldDeclareQueue() {
         return !endpoint.isSkipQueueDeclare() && endpoint.getQueue() != null;
     }
-    
+
     private boolean shouldDeclareExchange() {
         return !endpoint.isSkipExchangeDeclare();
+    }
+
+    private boolean shouldBindQueue() {
+        return !endpoint.isSkipQueueBind();
     }
 
     private void populateQueueArgumentsFromConfigurer(final Map<String, Object> queueArgs) {
@@ -99,8 +103,10 @@ public class RabbitMQDeclareSupport {
 
     private void declareAndBindQueue(final Channel channel, final String queue, final String exchange, final String routingKey, final Map<String, Object> arguments)
             throws IOException {
-        channel.queueDeclare(queue, endpoint.isDurable(), false, endpoint.isAutoDelete(), arguments);
-        channel.queueBind(queue, exchange, emptyIfNull(routingKey));
+        channel.queueDeclare(queue, endpoint.isDurable(), endpoint.isExclusive(), endpoint.isAutoDelete(), arguments);
+        if (shouldBindQueue()) {
+            channel.queueBind(queue, exchange, emptyIfNull(routingKey));
+        }
     }
 
     private String emptyIfNull(final String routingKey) {

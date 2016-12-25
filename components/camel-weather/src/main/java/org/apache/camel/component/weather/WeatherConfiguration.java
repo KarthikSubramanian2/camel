@@ -16,6 +16,9 @@
  */
 package org.apache.camel.component.weather;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Scanner;
 
 import org.apache.camel.component.weather.geolocation.FreeGeoIpGeoLocationProvider;
@@ -23,11 +26,11 @@ import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.UriParam;
 import org.apache.camel.spi.UriParams;
 import org.apache.camel.spi.UriPath;
+import org.apache.camel.util.ObjectHelper;
 import org.apache.commons.httpclient.HttpConnectionManager;
 
 import static org.apache.camel.component.weather.WeatherLanguage.en;
 import static org.apache.camel.component.weather.WeatherMode.JSON;
-import static org.apache.camel.component.weather.WeatherUnits.METRIC;
 import static org.apache.camel.util.ObjectHelper.notNull;
 
 @UriParams
@@ -41,16 +44,18 @@ public class WeatherConfiguration {
     @UriParam @Metadata(required = "true")
     private String appid;
     @UriParam
+    private WeatherApi weatherApi;
+    @UriParam(label = "filter")
     private String location = "";
-    @UriParam
+    @UriParam(label = "filter")
     private String lat;
-    @UriParam
+    @UriParam(label = "filter")
     private String lon;
-    @UriParam
+    @UriParam(label = "filter")
     private String rightLon;
-    @UriParam
+    @UriParam(label = "filter")
     private String topLat;
-    @UriParam
+    @UriParam(label = "filter")
     private Integer zoom;
     @UriParam
     private String period = "";
@@ -62,6 +67,12 @@ public class WeatherConfiguration {
     private WeatherLanguage language = en;
     @UriParam
     private String headerName;
+    @UriParam(label = "filter")
+    private String zip;
+    @UriParam(label = "filter", javaType = "java.lang.String")
+    private List<String> ids;
+    @UriParam(label = "filter")
+    private Integer cnt;
 
     @UriParam(label = "proxy")
     private String proxyHost;
@@ -69,9 +80,9 @@ public class WeatherConfiguration {
     private Integer proxyPort;
     @UriParam(label = "proxy")
     private String proxyAuthMethod;
-    @UriParam(label = "proxy")
+    @UriParam(label = "proxy", secret = true)
     private String proxyAuthUsername;
-    @UriParam(label = "proxy")
+    @UriParam(label = "proxy", secret = true)
     private String proxyAuthPassword;
     @UriParam(label = "proxy")
     private String proxyAuthDomain;
@@ -79,7 +90,6 @@ public class WeatherConfiguration {
     private String proxyAuthHost;
     @UriParam(label = "advanced")
     private HttpConnectionManager httpConnectionManager;
-
 
     public WeatherConfiguration(WeatherComponent component) {
         this.component = notNull(component, "component");
@@ -341,5 +351,60 @@ public class WeatherConfiguration {
      */
     public void setProxyAuthHost(String proxyAuthHost) {
         this.proxyAuthHost = proxyAuthHost;
+    }
+
+    public String getZip() {
+        return zip;
+    }
+
+    /**
+     * Zip-code, e.g. 94040,us
+     */
+    public void setZip(String zip) {
+        this.zip = zip;
+    }
+
+    public List<String> getIds() {
+        return ids;
+    }
+
+    /**
+     * List of id's of city/stations. You can separate multiple ids by comma.
+     */
+    public void setIds(String id) {
+        if (ids == null) {
+            ids = new ArrayList<>();
+        }
+        Iterator<?> it = ObjectHelper.createIterator(id);
+        while (it.hasNext()) {
+            String myId = (String) it.next();
+            ids.add(myId);
+        }
+    }
+
+    public void setIds(List<String> ids) {
+        this.ids = ids;
+    }
+
+    public Integer getCnt() {
+        return cnt;
+    }
+
+    /**
+     * Number of results to be found
+     */
+    public void setCnt(Integer cnt) {
+        this.cnt = cnt;
+    }
+
+    public WeatherApi getWeatherApi() {
+        return weatherApi;
+    }
+
+    /**
+     * The API to be use (current, forecast/3 hour, forecast daily, station)
+     */
+    public void setWeatherApi(WeatherApi weatherApi) {
+        this.weatherApi = weatherApi;
     }
 }

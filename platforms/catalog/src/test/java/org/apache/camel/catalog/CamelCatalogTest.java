@@ -16,6 +16,7 @@
  */
 package org.apache.camel.catalog;
 
+import java.io.FileInputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,6 +32,7 @@ import static org.apache.camel.catalog.CatalogHelper.loadText;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class CamelCatalogTest {
@@ -48,6 +50,20 @@ public class CamelCatalogTest {
     public void testGetVersion() throws Exception {
         String version = catalog.getCatalogVersion();
         assertNotNull(version);
+
+        String loaded = catalog.getLoadedVersion();
+        assertNotNull(loaded);
+        assertEquals(version, loaded);
+    }
+
+    @Test
+    public void testLoadVersion() throws Exception {
+        boolean result = catalog.loadVersion("1.0");
+        assertFalse(result);
+
+        String version = catalog.getCatalogVersion();
+        result = catalog.loadVersion(version);
+        assertTrue(result);
     }
 
     @Test
@@ -58,6 +74,8 @@ public class CamelCatalogTest {
         assertTrue(names.contains("simple"));
         assertTrue(names.contains("spel"));
         assertTrue(names.contains("xpath"));
+        assertTrue(names.contains("bean"));
+        assertFalse(names.contains("method"));
     }
 
     @Test
@@ -104,6 +122,12 @@ public class CamelCatalogTest {
         assertNotNull(schema);
 
         schema = catalog.modelJSonSchema("aggregate");
+        assertNotNull(schema);
+
+        // lets make it possible to find bean/method using both names
+        schema = catalog.modelJSonSchema("method");
+        assertNotNull(schema);
+        schema = catalog.modelJSonSchema("bean");
         assertNotNull(schema);
     }
 
@@ -378,6 +402,21 @@ public class CamelCatalogTest {
         assertEquals(1, map.size());
 
         assertEquals("foo", map.get("destinationName"));
+    }
+
+    @Test
+    public void testEndpointPropertiesJmsWithDotInName() throws Exception {
+        Map<String, String> map = catalog.endpointProperties("jms:browse.me");
+        assertNotNull(map);
+        assertEquals(1, map.size());
+
+        assertEquals("browse.me", map.get("destinationName"));
+
+        map = catalog.endpointProperties("jms:browse.me");
+        assertNotNull(map);
+        assertEquals(1, map.size());
+
+        assertEquals("browse.me", map.get("destinationName"));
     }
 
     @Test
@@ -690,8 +729,6 @@ public class CamelCatalogTest {
 
     @Test
     public void testAddComponent() throws Exception {
-        assertFalse(catalog.findComponentNames().contains("dummy"));
-
         catalog.addComponent("dummy", "org.foo.camel.DummyComponent");
 
         assertTrue(catalog.findComponentNames().contains("dummy"));
@@ -706,14 +743,46 @@ public class CamelCatalogTest {
     }
 
     @Test
-    public void testAddDataFormat() throws Exception {
-        assertFalse(catalog.findDataFormatNames().contains("dummyformat"));
+    public void testAddComponentWithJson() throws Exception {
+        String json = loadText(new FileInputStream("src/test/resources/org/foo/camel/dummy.json"));
+        assertNotNull(json);
+        catalog.addComponent("dummy", "org.foo.camel.DummyComponent", json);
 
+        assertTrue(catalog.findComponentNames().contains("dummy"));
+
+        json = catalog.componentJSonSchema("dummy");
+        assertNotNull(json);
+
+        // validate we can parse the json
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode tree = mapper.readTree(json);
+        assertNotNull(tree);
+    }
+
+    @Test
+    public void testAddDataFormat() throws Exception {
         catalog.addDataFormat("dummyformat", "org.foo.camel.DummyDataFormat");
 
         assertTrue(catalog.findDataFormatNames().contains("dummyformat"));
 
         String json = catalog.dataFormatJSonSchema("dummyformat");
+        assertNotNull(json);
+
+        // validate we can parse the json
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode tree = mapper.readTree(json);
+        assertNotNull(tree);
+    }
+
+    @Test
+    public void testAddDataFormatWithJSon() throws Exception {
+        String json = loadText(new FileInputStream("src/test/resources/org/foo/camel/dummyformat.json"));
+        assertNotNull(json);
+        catalog.addDataFormat("dummyformat", "org.foo.camel.DummyDataFormat", json);
+
+        assertTrue(catalog.findDataFormatNames().contains("dummyformat"));
+
+        json = catalog.dataFormatJSonSchema("dummyformat");
         assertNotNull(json);
 
         // validate we can parse the json
@@ -746,6 +815,67 @@ public class CamelCatalogTest {
         assertEquals("${body} > ${header.size", result.getSimple());
         LOG.info(result.getError());
         assertTrue(result.getError().startsWith("expected symbol functionEnd but was eol at location 22"));
+    }
+
+    @Test
+    public void testSpringCamelContext() throws Exception {
+        String json = catalog.modelJSonSchema("camelContext");
+        assertNotNull(json);
+
+        // validate we can parse the json
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode tree = mapper.readTree(json);
+        assertNotNull(tree);
+
+        assertTrue(json.contains("CamelContext using XML configuration"));
+    }
+
+    @Test
+    public void testComponentAsciiDoc() throws Exception {
+        String doc = catalog.componentAsciiDoc("mock");
+        assertNotNull(doc);
+        assertTrue(doc.contains("mock:someName"));
+
+        doc = catalog.componentAsciiDoc("geocoder");
+        assertNotNull(doc);
+        assertTrue(doc.contains("looking up geocodes"));
+
+        doc = catalog.componentAsciiDoc("smtp");
+        assertNotNull(doc);
+        assertTrue(doc.contains("The mail component"));
+
+        doc = catalog.componentAsciiDoc("unknown");
+        assertNull(doc);
+    }
+
+    @Test
+    public void testDataFormatAsciiDoc() throws Exception {
+        String doc = catalog.dataFormatAsciiDoc("json-jackson");
+        assertNotNull(doc);
+        assertTrue(doc.contains("Jackson dataformat"));
+
+        doc = catalog.dataFormatAsciiDoc("bindy-csv");
+        assertNotNull(doc);
+        assertTrue(doc.contains("CsvRecord"));
+    }
+
+    @Test
+    public void testLanguageAsciiDoc() throws Exception {
+        String doc = catalog.languageAsciiDoc("jsonpath");
+        assertNotNull(doc);
+        assertTrue(doc.contains("JSonPath language"));
+    }
+
+    @Test
+    public void testValidateEndpointTwitterSpecial() throws Exception {
+        String uri = "twitter://search?{{%s}}&keywords=java";
+
+        EndpointValidationResult result = catalog.validateEndpointProperties(uri);
+        assertTrue(result.isSuccess());
+
+        uri = "twitter://search?{{%s}}";
+        result = catalog.validateEndpointProperties(uri);
+        assertTrue(result.isSuccess());
     }
 
 }

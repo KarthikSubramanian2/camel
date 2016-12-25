@@ -16,6 +16,7 @@
  */
 package org.apache.camel.spring.boot;
 
+import org.apache.camel.CamelContext;
 import org.apache.camel.ManagementStatisticsLevel;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -28,6 +29,43 @@ public class CamelConfigurationProperties {
      * Sets the name of the CamelContext.
      */
     private String name;
+
+    /**
+     * Timeout in seconds to graceful shutdown Camel.
+     */
+    private int shutdownTimeout = 300;
+
+    /**
+     * Whether Camel should try to suppress logging during shutdown and timeout was triggered,
+     * meaning forced shutdown is happening. And during forced shutdown we want to avoid logging
+     * errors/warnings et all in the logs as a side-effect of the forced timeout.
+     * <p/>
+     * By default this is <tt>false</tt>
+     * <p/>
+     * Notice the suppress is a <i>best effort</i> as there may still be some logs coming
+     * from 3rd party libraries and whatnot, which Camel cannot control.
+     */
+    private boolean shutdownSuppressLoggingOnTimeout;
+
+    /**
+     * Sets whether to force shutdown of all consumers when a timeout occurred and thus
+     * not all consumers was shutdown within that period.
+     * <p/>
+     * You should have good reasons to set this option to <tt>false</tt> as it means that the routes
+     * keep running and is halted abruptly when CamelContext has been shutdown.
+     */
+    private boolean shutdownNowOnTimeout = true;
+
+    /**
+     * Sets whether routes should be shutdown in reverse or the same order as they where started.
+     */
+    private boolean shutdownRoutesInReverseOrder = true;
+
+    /**
+     * Sets whether to log information about the inflight Exchanges which are still running
+     * during a shutdown which didn't complete without the given timeout.
+     */
+    private boolean shutdownLogInflightExchangesOnTimeout = true;
 
     /**
      * Enable JMX in your Camel application.
@@ -62,12 +100,39 @@ public class CamelConfigurationProperties {
     private String xmlRests = "classpath:camel-rest/*.xml";
 
     /**
+     * To watch the directory for file changes which triggers
+     * a live reload of the Camel routes on-the-fly.
+     * <p/>
+     * For example configure this to point to the source code where the Camel XML files are located
+     * such as: src/main/resources/camel/
+     */
+    private String xmlRoutesReloadDirectory;
+
+    /**
+     * Directory to load additional configuration files that contains
+     * configuration values that takes precedence over any other configuration.
+     * This can be used to refer to files that may have secret configuration that
+     * has been mounted on the file system for containers.
+     * <p/>
+     * You must use either <tt>file:</tt> or <tt>classpath:</tt> as prefix to load
+     * from file system or classpath. Then you can specify a pattern to load
+     * from sub directories and a name pattern such as <tt>file:/var/app/secret/*.properties</tt>
+     */
+    private String fileConfigurations;
+
+    /**
      * Whether to use the main run controller to ensure the Spring-Boot application
      * keeps running until being stopped or the JVM terminated.
      * You typically only need this if you run Spring-Boot standalone.
      * If you run Spring-Boot with spring-boot-starter-web then the web container keeps the JVM running.
      */
     private boolean mainRunController;
+
+    /**
+     * Whether to include non-singleton beans (prototypes) when scanning for RouteBuilder instances.
+     * By default only singleton beans is included in the context scan.
+     */
+    private boolean includeNonSingletons;
 
     /**
      * Is used to limit the maximum length of the logging Camel message bodies. If the message body
@@ -80,8 +145,80 @@ public class CamelConfigurationProperties {
      * Sets whether stream caching is enabled or not.
      *
      * Default is false.
+     *
+     * @deprecated use {@link #streamCachingEnabled}
      */
+    @Deprecated
     private boolean streamCaching;
+
+    /**
+     * Sets whether stream caching is enabled or not.
+     *
+     * Default is false.
+     */
+    private boolean streamCachingEnabled;
+
+    /**
+     * Sets the stream caching spool (temporary) directory to use for overflow and spooling to disk.
+     * <p/>
+     * If no spool directory has been explicit configured, then a temporary directory
+     * is created in the <tt>java.io.tmpdir</tt> directory.
+     */
+    private String streamCachingSpoolDirectory;
+
+    /**
+     * Sets a stream caching chiper name to use when spooling to disk to write with encryption.
+     * <p/>
+     * By default the data is not encrypted.
+     */
+    private String streamCachingSpoolChiper;
+
+    /**
+     * Stream caching threshold in bytes when overflow to disk is activated.
+     * <p/>
+     * The default threshold is {@link org.apache.camel.StreamCache#DEFAULT_SPOOL_THRESHOLD} bytes (eg 128kb).
+     * Use <tt>-1</tt> to disable overflow to disk.
+     */
+    private long streamCachingSpoolThreshold;
+
+    /**
+     * Sets a percentage (1-99) of used heap memory threshold to activate stream caching spooling to disk.
+     */
+    private int streamCachingSpoolUsedHeapMemoryThreshold;
+
+    /**
+     * Sets what the upper bounds should be when streamCachingSpoolUsedHeapMemoryThreshold is in use.
+     */
+    private String streamCachingSpoolUsedHeapMemoryLimit;
+
+    /**
+     * Sets whether if just any of the {@link org.apache.camel.spi.StreamCachingStrategy.SpoolRule} rules
+     * returns <tt>true</tt> then shouldSpoolCache(long) returns <tt>true</tt>.
+     * If this option is <tt>false</tt>, then <b>all</b> the {@link org.apache.camel.spi.StreamCachingStrategy.SpoolRule} must
+     * return <tt>true</tt>.
+     * <p/>
+     * The default value is <tt>false</tt> which means that all the rules must return <tt>true</tt>.
+     */
+    private boolean streamCachingAnySpoolRules;
+
+    /**
+     * Sets the stream caching buffer size to use when allocating in-memory buffers used for in-memory stream caches.
+     * <p/>
+     * The default size is {@link org.apache.camel.util.IOHelper#DEFAULT_BUFFER_SIZE}
+     */
+    private int streamCachingBufferSize;
+
+    /**
+     * Whether to remove stream caching temporary directory when stopping.
+     * <p/>
+     * This option is default <tt>true</tt>
+     */
+    private boolean streamCachingRemoveSpoolDirectoryWhenStopping = true;
+
+    /**
+     * Sets whether stream caching statistics is enabled.
+     */
+    private boolean streamCachingStatisticsEnabled;
 
     /**
      * Sets whether tracing is enabled or not.
@@ -161,6 +298,76 @@ public class CamelConfigurationProperties {
      */
     private boolean jmxCreateConnector;
 
+    /**
+     * Tracer should output message body
+     */
+    private boolean traceFormatterShowBody = true;
+
+    /**
+     * Tracer should output message body type
+     */
+    private boolean tracerFormatterShowBodyType = true;
+
+    /**
+     * Tracer should output breadcrumb
+     */
+    private boolean traceFormatterShowBreadCrumb = true;
+
+    /**
+     * Tracer should output exchange id
+     */
+    private boolean traceFormatterShowExchangeId;
+
+    /**
+     * Tracer should output message headers
+     */
+    private boolean traceFormatterShowHeaders = true;
+
+    /**
+     * Tracer should output exchange properties
+     */
+    private boolean traceFormatterShowProperties;
+
+    /**
+     * Tracer should output EIP node
+     */
+    private boolean traceFormatterShowNode = true;
+
+    /**
+     * Tracer should output message exchange pattern (MEP)
+     */
+    private boolean traceFormatterShowExchangePattern = true;
+
+    /**
+     * Tracer should output exception
+     */
+    private boolean traceFormatterShowException = true;
+
+    /**
+     * Tracer should output route id
+     */
+    private boolean traceFormatterShowRouteId = true;
+
+    /**
+     * Tracer maximum length of breadcrumb ids
+     */
+    private Integer tracerFormatterBreadCrumbLength;
+
+    /**
+     * Tracer should output short exchange id
+     */
+    private boolean traceFormatterShowShortExchangeId;
+
+    /**
+     * Tracer maximum length of node
+     */
+    private Integer tracerFormatterNodeLength;
+
+    /**
+     * Tracer maximum characters in total
+     */
+    private Integer tracerFormatterMaxChars = 10000;
+
     // Getters & setters
 
     public String getName() {
@@ -169,6 +376,46 @@ public class CamelConfigurationProperties {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public int getShutdownTimeout() {
+        return shutdownTimeout;
+    }
+
+    public void setShutdownTimeout(int shutdownTimeout) {
+        this.shutdownTimeout = shutdownTimeout;
+    }
+
+    public boolean isShutdownSuppressLoggingOnTimeout() {
+        return shutdownSuppressLoggingOnTimeout;
+    }
+
+    public void setShutdownSuppressLoggingOnTimeout(boolean shutdownSuppressLoggingOnTimeout) {
+        this.shutdownSuppressLoggingOnTimeout = shutdownSuppressLoggingOnTimeout;
+    }
+
+    public boolean isShutdownNowOnTimeout() {
+        return shutdownNowOnTimeout;
+    }
+
+    public void setShutdownNowOnTimeout(boolean shutdownNowOnTimeout) {
+        this.shutdownNowOnTimeout = shutdownNowOnTimeout;
+    }
+
+    public boolean isShutdownRoutesInReverseOrder() {
+        return shutdownRoutesInReverseOrder;
+    }
+
+    public void setShutdownRoutesInReverseOrder(boolean shutdownRoutesInReverseOrder) {
+        this.shutdownRoutesInReverseOrder = shutdownRoutesInReverseOrder;
+    }
+
+    public boolean isShutdownLogInflightExchangesOnTimeout() {
+        return shutdownLogInflightExchangesOnTimeout;
+    }
+
+    public void setShutdownLogInflightExchangesOnTimeout(boolean shutdownLogInflightExchangesOnTimeout) {
+        this.shutdownLogInflightExchangesOnTimeout = shutdownLogInflightExchangesOnTimeout;
     }
 
     public boolean isJmxEnabled() {
@@ -219,6 +466,14 @@ public class CamelConfigurationProperties {
         this.xmlRests = xmlRests;
     }
 
+    public String getXmlRoutesReloadDirectory() {
+        return xmlRoutesReloadDirectory;
+    }
+
+    public void setXmlRoutesReloadDirectory(String xmlRoutesReloadDirectory) {
+        this.xmlRoutesReloadDirectory = xmlRoutesReloadDirectory;
+    }
+
     public boolean isMainRunController() {
         return mainRunController;
     }
@@ -235,12 +490,94 @@ public class CamelConfigurationProperties {
         this.logDebugMaxChars = logDebugMaxChars;
     }
 
+    @Deprecated
     public boolean isStreamCaching() {
-        return streamCaching;
+        return streamCachingEnabled;
     }
 
+    @Deprecated
     public void setStreamCaching(boolean streamCaching) {
-        this.streamCaching = streamCaching;
+        this.streamCachingEnabled = streamCaching;
+    }
+
+    public boolean isStreamCachingEnabled() {
+        return streamCachingEnabled;
+    }
+
+    public void setStreamCachingEnabled(boolean streamCachingEnabled) {
+        this.streamCachingEnabled = streamCachingEnabled;
+    }
+
+    public String getStreamCachingSpoolDirectory() {
+        return streamCachingSpoolDirectory;
+    }
+
+    public void setStreamCachingSpoolDirectory(String streamCachingSpoolDirectory) {
+        this.streamCachingSpoolDirectory = streamCachingSpoolDirectory;
+    }
+
+    public String getStreamCachingSpoolChiper() {
+        return streamCachingSpoolChiper;
+    }
+
+    public void setStreamCachingSpoolChiper(String streamCachingSpoolChiper) {
+        this.streamCachingSpoolChiper = streamCachingSpoolChiper;
+    }
+
+    public long getStreamCachingSpoolThreshold() {
+        return streamCachingSpoolThreshold;
+    }
+
+    public void setStreamCachingSpoolThreshold(long streamCachingSpoolThreshold) {
+        this.streamCachingSpoolThreshold = streamCachingSpoolThreshold;
+    }
+
+    public int getStreamCachingSpoolUsedHeapMemoryThreshold() {
+        return streamCachingSpoolUsedHeapMemoryThreshold;
+    }
+
+    public void setStreamCachingSpoolUsedHeapMemoryThreshold(int streamCachingSpoolUsedHeapMemoryThreshold) {
+        this.streamCachingSpoolUsedHeapMemoryThreshold = streamCachingSpoolUsedHeapMemoryThreshold;
+    }
+
+    public String getStreamCachingSpoolUsedHeapMemoryLimit() {
+        return streamCachingSpoolUsedHeapMemoryLimit;
+    }
+
+    public void setStreamCachingSpoolUsedHeapMemoryLimit(String streamCachingSpoolUsedHeapMemoryLimit) {
+        this.streamCachingSpoolUsedHeapMemoryLimit = streamCachingSpoolUsedHeapMemoryLimit;
+    }
+
+    public boolean isStreamCachingAnySpoolRules() {
+        return streamCachingAnySpoolRules;
+    }
+
+    public void setStreamCachingAnySpoolRules(boolean streamCachingAnySpoolRules) {
+        this.streamCachingAnySpoolRules = streamCachingAnySpoolRules;
+    }
+
+    public int getStreamCachingBufferSize() {
+        return streamCachingBufferSize;
+    }
+
+    public void setStreamCachingBufferSize(int streamCachingBufferSize) {
+        this.streamCachingBufferSize = streamCachingBufferSize;
+    }
+
+    public boolean isStreamCachingRemoveSpoolDirectoryWhenStopping() {
+        return streamCachingRemoveSpoolDirectoryWhenStopping;
+    }
+
+    public void setStreamCachingRemoveSpoolDirectoryWhenStopping(boolean streamCachingRemoveSpoolDirectoryWhenStopping) {
+        this.streamCachingRemoveSpoolDirectoryWhenStopping = streamCachingRemoveSpoolDirectoryWhenStopping;
+    }
+
+    public boolean isStreamCachingStatisticsEnabled() {
+        return streamCachingStatisticsEnabled;
+    }
+
+    public void setStreamCachingStatisticsEnabled(boolean streamCachingStatisticsEnabled) {
+        this.streamCachingStatisticsEnabled = streamCachingStatisticsEnabled;
     }
 
     public boolean isTracing() {
@@ -321,5 +658,133 @@ public class CamelConfigurationProperties {
 
     public void setJmxCreateConnector(boolean jmxCreateConnector) {
         this.jmxCreateConnector = jmxCreateConnector;
+    }
+
+    public String getFileConfigurations() {
+        return fileConfigurations;
+    }
+
+    public void setFileConfigurations(String fileConfigurations) {
+        this.fileConfigurations = fileConfigurations;
+    }
+
+    public boolean isTraceFormatterShowBody() {
+        return traceFormatterShowBody;
+    }
+
+    public void setTraceFormatterShowBody(boolean traceFormatterShowBody) {
+        this.traceFormatterShowBody = traceFormatterShowBody;
+    }
+
+    public boolean isTracerFormatterShowBodyType() {
+        return tracerFormatterShowBodyType;
+    }
+
+    public void setTracerFormatterShowBodyType(boolean tracerFormatterShowBodyType) {
+        this.tracerFormatterShowBodyType = tracerFormatterShowBodyType;
+    }
+
+    public boolean isTraceFormatterShowBreadCrumb() {
+        return traceFormatterShowBreadCrumb;
+    }
+
+    public void setTraceFormatterShowBreadCrumb(boolean traceFormatterShowBreadCrumb) {
+        this.traceFormatterShowBreadCrumb = traceFormatterShowBreadCrumb;
+    }
+
+    public boolean isTraceFormatterShowExchangeId() {
+        return traceFormatterShowExchangeId;
+    }
+
+    public void setTraceFormatterShowExchangeId(boolean traceFormatterShowExchangeId) {
+        this.traceFormatterShowExchangeId = traceFormatterShowExchangeId;
+    }
+
+    public boolean isTraceFormatterShowHeaders() {
+        return traceFormatterShowHeaders;
+    }
+
+    public void setTraceFormatterShowHeaders(boolean traceFormatterShowHeaders) {
+        this.traceFormatterShowHeaders = traceFormatterShowHeaders;
+    }
+
+    public boolean isTraceFormatterShowProperties() {
+        return traceFormatterShowProperties;
+    }
+
+    public void setTraceFormatterShowProperties(boolean traceFormatterShowProperties) {
+        this.traceFormatterShowProperties = traceFormatterShowProperties;
+    }
+
+    public boolean isTraceFormatterShowNode() {
+        return traceFormatterShowNode;
+    }
+
+    public void setTraceFormatterShowNode(boolean traceFormatterShowNode) {
+        this.traceFormatterShowNode = traceFormatterShowNode;
+    }
+
+    public boolean isTraceFormatterShowExchangePattern() {
+        return traceFormatterShowExchangePattern;
+    }
+
+    public void setTraceFormatterShowExchangePattern(boolean traceFormatterShowExchangePattern) {
+        this.traceFormatterShowExchangePattern = traceFormatterShowExchangePattern;
+    }
+
+    public boolean isTraceFormatterShowException() {
+        return traceFormatterShowException;
+    }
+
+    public void setTraceFormatterShowException(boolean traceFormatterShowException) {
+        this.traceFormatterShowException = traceFormatterShowException;
+    }
+
+    public boolean isTraceFormatterShowRouteId() {
+        return traceFormatterShowRouteId;
+    }
+
+    public void setTraceFormatterShowRouteId(boolean traceFormatterShowRouteId) {
+        this.traceFormatterShowRouteId = traceFormatterShowRouteId;
+    }
+
+    public Integer getTracerFormatterBreadCrumbLength() {
+        return tracerFormatterBreadCrumbLength;
+    }
+
+    public void setTracerFormatterBreadCrumbLength(Integer tracerFormatterBreadCrumbLength) {
+        this.tracerFormatterBreadCrumbLength = tracerFormatterBreadCrumbLength;
+    }
+
+    public boolean isTraceFormatterShowShortExchangeId() {
+        return traceFormatterShowShortExchangeId;
+    }
+
+    public void setTraceFormatterShowShortExchangeId(boolean traceFormatterShowShortExchangeId) {
+        this.traceFormatterShowShortExchangeId = traceFormatterShowShortExchangeId;
+    }
+
+    public Integer getTracerFormatterNodeLength() {
+        return tracerFormatterNodeLength;
+    }
+
+    public void setTracerFormatterNodeLength(Integer tracerFormatterNodeLength) {
+        this.tracerFormatterNodeLength = tracerFormatterNodeLength;
+    }
+
+    public Integer getTracerFormatterMaxChars() {
+        return tracerFormatterMaxChars;
+    }
+
+    public void setTracerFormatterMaxChars(Integer tracerFormatterMaxChars) {
+        this.tracerFormatterMaxChars = tracerFormatterMaxChars;
+    }
+
+    public boolean isIncludeNonSingletons() {
+        return includeNonSingletons;
+    }
+
+    public void setIncludeNonSingletons(boolean includeNonSingletons) {
+        this.includeNonSingletons = includeNonSingletons;
     }
 }

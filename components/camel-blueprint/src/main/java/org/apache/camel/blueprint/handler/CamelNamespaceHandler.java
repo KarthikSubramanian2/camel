@@ -150,13 +150,18 @@ public class CamelNamespaceHandler implements NamespaceHandler {
             for (int i = 0; i < map.getLength(); i++) {
                 Node att = map.item(i);
                 if (att.getNodeName().equals("uri") || att.getNodeName().endsWith("Uri")) {
-                    String value = att.getNodeValue();
-                    // remove all double spaces
-                    String changed = value.replaceAll("\\s{2,}", "");
+                    final String value = att.getNodeValue();
+                    String before = ObjectHelper.before(value, "?");
+                    String after = ObjectHelper.after(value, "?");
 
-                    if (!value.equals(changed)) {
-                        LOG.debug("Removed whitespace noise from attribute {} -> {}", value, changed);
-                        att.setNodeValue(changed);
+                    if (before != null && after != null) {
+                        // remove all double spaces in the uri parameters
+                        String changed = after.replaceAll("\\s{2,}", "");
+                        if (!after.equals(changed)) {
+                            String newAtr = before.trim() + "?" + changed.trim();
+                            LOG.debug("Removed whitespace noise from attribute {} -> {}", value, newAtr);
+                            att.setNodeValue(newAtr);
+                        }
                     }
                 }
             }
@@ -171,7 +176,7 @@ public class CamelNamespaceHandler implements NamespaceHandler {
         return getClass().getClassLoader().getResource("camel-blueprint.xsd");
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({"rawtypes"})
     public Set<Class> getManagedClasses() {
         return new HashSet<Class>(Arrays.asList(BlueprintCamelContext.class));
     }
@@ -975,7 +980,6 @@ public class CamelNamespaceHandler implements NamespaceHandler {
             this.blueprintContainer = blueprintContainer;
         }
 
-        @SuppressWarnings("deprecation")
         public void process(ComponentDefinitionRegistry componentDefinitionRegistry) {
             CamelContextFactoryBean ccfb = (CamelContextFactoryBean) blueprintContainer.getComponentInstance(".camelBlueprint.factory." + camelContextName);
             CamelContext camelContext = ccfb.getContext();
@@ -1045,7 +1049,11 @@ public class CamelNamespaceHandler implements NamespaceHandler {
             // because the factory has already been instantiated
             try {
                 for (String component : components) {
-                    getComponentResolverReference(context, component);
+                    if (camelContext.getComponent(component) == null) {
+                        getComponentResolverReference(context, component);
+                    } else {
+                        LOG.debug("Not creating a service reference for component {} because a component already exists in the Camel Context", component);
+                    }
                 }
                 for (String language : languages) {
                     getLanguageResolverReference(context, language);

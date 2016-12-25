@@ -45,6 +45,9 @@ import org.apache.camel.spi.UriEndpoint;
 import org.apache.camel.spi.UriParam;
 import org.apache.camel.spi.UriPath;
 
+/**
+ * The rabbitmq component allows you produce and consume messages from <a href="http://www.rabbitmq.com/">RabbitMQ</a> instances.
+ */
 @UriEndpoint(scheme = "rabbitmq", title = "RabbitMQ", syntax = "rabbitmq:hostname:portNumber/exchangeName", consumerClass = RabbitMQConsumer.class, label = "messaging")
 public class RabbitMQEndpoint extends DefaultEndpoint implements AsyncEndpoint {
     // header to indicate that the message body needs to be de-serialized
@@ -56,9 +59,9 @@ public class RabbitMQEndpoint extends DefaultEndpoint implements AsyncEndpoint {
     private int portNumber;
     @UriPath @Metadata(required = "true")
     private String exchangeName;
-    @UriParam(label = "security", defaultValue = ConnectionFactory.DEFAULT_USER)
+    @UriParam(label = "security", defaultValue = ConnectionFactory.DEFAULT_USER, secret = true)
     private String username = ConnectionFactory.DEFAULT_USER;
-    @UriParam(label = "security", defaultValue = ConnectionFactory.DEFAULT_PASS)
+    @UriParam(label = "security", defaultValue = ConnectionFactory.DEFAULT_PASS, secret = true)
     private String password = ConnectionFactory.DEFAULT_PASS;
     @UriParam(defaultValue = ConnectionFactory.DEFAULT_VHOST)
     private String vhost = ConnectionFactory.DEFAULT_VHOST;
@@ -70,6 +73,8 @@ public class RabbitMQEndpoint extends DefaultEndpoint implements AsyncEndpoint {
     private boolean autoDelete = true;
     @UriParam(label = "common", defaultValue = "true")
     private boolean durable = true;
+    @UriParam(label = "common", defaultValue = "false")
+    private boolean exclusive;
     @UriParam(label = "producer")
     private boolean bridgeEndpoint;
     @UriParam(label = "common")
@@ -80,6 +85,8 @@ public class RabbitMQEndpoint extends DefaultEndpoint implements AsyncEndpoint {
     private String routingKey;
     @UriParam(label = "common")
     private boolean skipQueueDeclare;
+    @UriParam(label = "common")
+    private boolean skipQueueBind;
     @UriParam(label = "common")
     private boolean skipExchangeDeclare;
     @UriParam(label = "advanced")
@@ -148,6 +155,8 @@ public class RabbitMQEndpoint extends DefaultEndpoint implements AsyncEndpoint {
     private boolean publisherAcknowledgements;
     @UriParam(label = "producer")
     private long publisherAcknowledgementsTimeout;
+    @UriParam(label = "producer")
+    private boolean guaranteedDeliveries;
     // camel-jms supports this setting but it is not currently configurable in camel-rabbitmq
     private boolean useMessageIDAsCorrelationID = true;
     // camel-jms supports this setting but it is not currently configurable in camel-rabbitmq
@@ -406,7 +415,19 @@ public class RabbitMQEndpoint extends DefaultEndpoint implements AsyncEndpoint {
     public boolean isSkipQueueDeclare() {
         return skipQueueDeclare;
     }
-    
+
+    /**
+     * If true the queue will not be bound to the exchange after declaring it
+     * @return
+     */
+    public boolean isSkipQueueBind() {
+        return skipQueueBind;
+    }
+
+    public void setSkipQueueBind(boolean skipQueueBind) {
+        this.skipQueueBind = skipQueueBind;
+    }
+
     /**
      * This can be used if we need to declare the queue but not the exchange
      */
@@ -785,7 +806,7 @@ public class RabbitMQEndpoint extends DefaultEndpoint implements AsyncEndpoint {
     }
 
     /**
-     * When true and an inOut Exchange failed on the consumer side send the caused Exception back in the response 
+     * When true and an inOut Exchange failed on the consumer side send the caused Exception back in the response
      */
     public void setTransferException(boolean transferException) {
         this.transferException = transferException;
@@ -818,6 +839,22 @@ public class RabbitMQEndpoint extends DefaultEndpoint implements AsyncEndpoint {
     }
 
     /**
+     * When true, an exception will be thrown when the message cannot be delivered (basic.return) and the message is
+     * marked as mandatory.
+     * PublisherAcknowledgement will also be activated in this case
+     *
+     * See also <a href=https://www.rabbitmq.com/confirms.html">publisher acknowledgements</a> - When will messages be
+     * confirmed?
+     */
+    public boolean isGuaranteedDeliveries() {
+        return guaranteedDeliveries;
+    }
+
+    public void setGuaranteedDeliveries(boolean guaranteedDeliveries) {
+        this.guaranteedDeliveries = guaranteedDeliveries;
+    }
+
+    /**
      * Get replyToType for inOut exchange
      */
     public String getReplyToType() {
@@ -829,6 +866,17 @@ public class RabbitMQEndpoint extends DefaultEndpoint implements AsyncEndpoint {
      */
     public String getReplyTo() {
         return replyTo;
+    }
+
+    public boolean isExclusive() {
+        return exclusive;
+    }
+
+    /**
+     * Exclusive queues may only be accessed by the current connection, and are deleted when that connection closes.
+     */
+    public void setExclusive(boolean exclusive) {
+        this.exclusive = exclusive;
     }
 
 }

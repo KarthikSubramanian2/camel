@@ -16,39 +16,23 @@
  */
 package org.apache.camel.component.redis;
 
-import org.apache.camel.Exchange;
-import org.apache.camel.impl.DefaultProducer;
-import org.apache.camel.util.URISupport;
+import java.util.Map;
 
-/**
- * The Redis producer.
- */
-public class  RedisProducer extends DefaultProducer {
-    private final RedisClient redisClient;
-    private final CommandDispatcher commandDispatcher;
+import org.apache.camel.Endpoint;
+import org.apache.camel.Processor;
+import org.apache.camel.impl.HeaderSelectorProducer;
 
-    private transient String redisProducerToString;
-    
-    public RedisProducer(RedisEndpoint endpoint, RedisConfiguration configuration) {
-        super(endpoint);
-        this.redisClient = new RedisClient(configuration.getRedisTemplate());
-        this.commandDispatcher = new CommandDispatcher(configuration);
-    }
+final class RedisProducer extends HeaderSelectorProducer {
 
-    public void process(final Exchange exchange) throws Exception {
-        commandDispatcher.execute(redisClient, exchange);
-    }
+    RedisProducer(Endpoint endpoint,
+                         String header,
+                         String defaultHeaderValue,
+                         RedisProcessorsCreator redisProcessorsCreator) {
+        super(endpoint, header, defaultHeaderValue);
 
-    @Override
-    public RedisEndpoint getEndpoint() {
-        return (RedisEndpoint)super.getEndpoint();
-    }
-
-    @Override
-    public String toString() {
-        if (redisProducerToString == null) {
-            redisProducerToString = "RedisProducer[" + URISupport.sanitizeUri(getEndpoint().getEndpointUri()) + "]";
+        for (Map.Entry<Command, Processor> entry : redisProcessorsCreator.getRedisProcessors().entrySet()) {
+            bind(entry.getKey().name(), entry.getValue());
         }
-        return redisProducerToString;
     }
+
 }

@@ -32,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.camel.AttachmentObjects;
 import org.apache.camel.Attachments;
 import org.apache.camel.Body;
 import org.apache.camel.CamelContext;
@@ -46,6 +47,7 @@ import org.apache.camel.Message;
 import org.apache.camel.OutHeaders;
 import org.apache.camel.Properties;
 import org.apache.camel.Property;
+import org.apache.camel.PropertyInject;
 import org.apache.camel.builder.ExpressionBuilder;
 import org.apache.camel.language.LanguageAnnotation;
 import org.apache.camel.spi.Registry;
@@ -213,6 +215,11 @@ public class BeanInfo {
                 if (!methodName.endsWith(")")) {
                     throw new IllegalArgumentException("Method should end with parenthesis, was " + methodName);
                 }
+                // and there must be an even number of parenthesis in the syntax
+                // (we can use betweenOuterPair as it return null if the syntax is invalid)
+                if (ObjectHelper.betweenOuterPair(methodName, '(', ')') == null) {
+                    throw new IllegalArgumentException("Method should have even pair of parenthesis, was " + methodName);
+                }
             }
             boolean emptyParameters = methodName.endsWith("()");
 
@@ -321,13 +328,18 @@ public class BeanInfo {
         }
 
         Set<Method> overrides = new HashSet<Method>();
-        Set<Method> bridges = new HashSet<Method>();
 
         // do not remove duplicates form class from the Java itself as they have some "duplicates" we need
         boolean javaClass = clazz.getName().startsWith("java.") || clazz.getName().startsWith("javax.");
         if (!javaClass) {
             // it may have duplicate methods already, even from declared or from interfaces + declared
             for (Method source : methods) {
+
+                // skip bridge methods in duplicate checks (as the bridge method is inserted by the compiler due to type erasure)
+                if (source.isBridge()) {
+                    continue;
+                }
+
                 for (Method target : methods) {
                     // skip ourselves
                     if (ObjectHelper.isOverridingMethod(source, target, true)) {
@@ -347,10 +359,15 @@ public class BeanInfo {
         if (Modifier.isPublic(clazz.getModifiers())) {
             // add additional interface methods
             List<Method> extraMethods = getInterfaceMethods(clazz);
-            for (Method target : extraMethods) {
-                for (Method source : methods) {
+            for (Method source : extraMethods) {
+                for (Method target : methods) {
                     if (ObjectHelper.isOverridingMethod(source, target, false)) {
-                        overrides.add(target);
+                        overrides.add(source);
+                    }
+                }
+                for (Method target : methodMap.keySet()) {
+                    if (ObjectHelper.isOverridingMethod(source, target, false)) {
+                        overrides.add(source);
                     }
                 }
             }
@@ -946,7 +963,9 @@ public class BeanInfo {
 
     private Expression createParameterUnmarshalExpressionForAnnotation(Class<?> clazz, Method method, 
             Class<?> parameterType, Annotation annotation) {
-        if (annotation instanceof Attachments) {
+        if (annotation instanceof AttachmentObjects) {
+            return ExpressionBuilder.attachmentObjectsExpression();
+        } else if (annotation instanceof Attachments) {
             return ExpressionBuilder.attachmentsExpression();
         } else if (annotation instanceof Property) {
             Property propertyAnnotation = (Property)annotation;
@@ -965,6 +984,10 @@ public class BeanInfo {
             return ExpressionBuilder.outHeadersExpression();
         } else if (annotation instanceof ExchangeException) {
             return ExpressionBuilder.exchangeExceptionExpression(CastUtils.cast(parameterType, Exception.class));
+        } else if (annotation instanceof PropertyInject) {
+            PropertyInject propertyAnnotation = (PropertyInject) annotation;
+            Expression inject = ExpressionBuilder.propertiesComponentExpression(propertyAnnotation.value(), null, propertyAnnotation.defaultValue());
+            return ExpressionBuilder.convertToExpression(inject, parameterType);
         } else {
             LanguageAnnotation languageAnnotation = annotation.annotationType().getAnnotation(LanguageAnnotation.class);
             if (languageAnnotation != null) {
@@ -1183,7 +1206,7 @@ public class BeanInfo {
         }
 
         // sort the methods by name A..Z
-        Collections.sort(methods, new Comparator<MethodInfo>() {
+        methods.sort(new Comparator<MethodInfo>() {
             public int compare(MethodInfo o1, MethodInfo o2) {
                 return o1.getMethod().getName().compareTo(o2.getMethod().getName());
             }

@@ -31,6 +31,9 @@ import org.apache.camel.Processor;
 import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.RouteContext;
 
+/**
+ * Hystrix Circuit Breaker EIP
+ */
 @Metadata(label = "eip,routing,circuitbreaker")
 @XmlRootElement(name = "hystrix")
 @XmlAccessorType(XmlAccessType.FIELD)
@@ -170,10 +173,10 @@ public class HystrixDefinition extends ProcessorDefinition<HystrixDefinition> {
      * Use <tt>end</tt> when configuration is complete, to return back to the Hystrix EIP.
      */
     public HystrixConfigurationDefinition hystrixConfiguration() {
-        hystrixConfiguration = new HystrixConfigurationDefinition(this);
+        hystrixConfiguration = hystrixConfiguration == null ? new HystrixConfigurationDefinition(this) : hystrixConfiguration;
         return hystrixConfiguration;
     }
-
+    
     /**
      * Configures the Hystrix EIP using the given configuration
      */

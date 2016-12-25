@@ -20,10 +20,15 @@ public class ComponentOptionModel {
 
     private String name;
     private String kind;
+    private String group;
+    private String required;
     private String type;
     private String javaType;
     private String deprecated;
+    private String secret;
     private String description;
+    private String defaultValue;
+    private String enums;
 
     public String getName() {
         return name;
@@ -39,6 +44,22 @@ public class ComponentOptionModel {
 
     public void setKind(String kind) {
         this.kind = kind;
+    }
+
+    public String getGroup() {
+        return group;
+    }
+
+    public void setGroup(String group) {
+        this.group = group;
+    }
+
+    public String getRequired() {
+        return required;
+    }
+
+    public void setRequired(String required) {
+        this.required = required;
     }
 
     public String getType() {
@@ -65,12 +86,36 @@ public class ComponentOptionModel {
         this.deprecated = deprecated;
     }
 
+    public String getSecret() {
+        return secret;
+    }
+
+    public void setSecret(String secret) {
+        this.secret = secret;
+    }
+
     public String getDescription() {
         return description;
     }
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getDefaultValue() {
+        return defaultValue;
+    }
+
+    public void setDefaultValue(String defaultValue) {
+        this.defaultValue = defaultValue;
+    }
+
+    public String getEnums() {
+        return enums;
+    }
+
+    public void setEnums(String enums) {
+        this.enums = enums;
     }
 
     public String getShortJavaType() {

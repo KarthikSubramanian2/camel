@@ -27,6 +27,7 @@ import org.apache.camel.util.ObjectHelper;
  * Represents the component that manages {@link AbstractEtcdEndpoint}.
  */
 public class EtcdComponent extends UriEndpointComponent {
+
     public EtcdComponent() {
         super(AbstractEtcdEndpoint.class);
     }
@@ -49,7 +50,7 @@ public class EtcdComponent extends UriEndpointComponent {
         }
 
         EtcdNamespace namespace = getCamelContext().getTypeConverter().mandatoryConvertTo(EtcdNamespace.class, ns);
-        EtcdConfiguration configuration = loadConfiguration(new EtcdConfiguration(), parameters);
+        EtcdConfiguration configuration = loadConfiguration(new EtcdConfiguration(getCamelContext()), parameters);
 
         if (namespace != null) {
             // path must start with leading slash

@@ -17,12 +17,13 @@
 package org.apache.camel.component.netty4.http;
 
 import java.net.URI;
+import java.util.List;
+import java.util.Map;
 
 import io.netty.handler.codec.http.FullHttpResponse;
-import io.netty.handler.codec.http.HttpHeaders;
 import io.netty.handler.codec.http.HttpRequest;
+import io.netty.handler.codec.http.HttpUtil;
 import io.netty.util.ReferenceCountUtil;
-import io.netty.util.ReferenceCounted;
 import org.apache.camel.AsyncCallback;
 import org.apache.camel.Exchange;
 import org.apache.camel.component.netty4.NettyConfiguration;
@@ -62,10 +63,10 @@ public class NettyHttpProducer extends NettyProducer {
         URI u = NettyHttpHelper.createURI(exchange, uri, getEndpoint());
 
         final HttpRequest request = getEndpoint().getNettyHttpBinding().toNettyRequest(exchange.getIn(), u.toString(), getConfiguration());
-        String actualUri = request.getUri();
+        String actualUri = request.uri();
         exchange.getIn().setHeader(Exchange.HTTP_URL, actualUri);
         // Need to check if we need to close the connection or not
-        if (!HttpHeaders.isKeepAlive(request)) {
+        if (!HttpUtil.isKeepAlive(request)) {
             // just want to make sure we close the channel if the keepAlive is not true
             exchange.setProperty(NettyConstants.NETTY_CLOSE_CHANNEL_WHEN_COMPLETE, true);
         }
@@ -74,18 +75,15 @@ public class NettyHttpProducer extends NettyProducer {
             exchange.getIn().removeHeader("host");
         }
 
-        // need to release the request when we are done
-        exchange.addOnCompletion(new SynchronizationAdapter(){
-            @Override
-            public void onDone(Exchange exchange) {
-                if (request instanceof ReferenceCounted) {
-                    if (((ReferenceCounted) request).refCnt() > 0) {
-                        log.debug("Releasing Netty HttpRequest ByteBuf");
-                        ReferenceCountUtil.release(request);
-                    }
+        if (getEndpoint().getCookieHandler() != null) {
+            Map<String, List<String>> cookieHeaders = getEndpoint().getCookieHandler().loadCookies(exchange, new URI(actualUri));
+            for (Map.Entry<String, List<String>> entry : cookieHeaders.entrySet()) {
+                String key = entry.getKey();
+                if (entry.getValue().size() > 0) {
+                    request.headers().add(key, entry.getValue());
                 }
             }
-        });
+        }
 
         return request;
     }
@@ -118,7 +116,7 @@ public class NettyHttpProducer extends NettyProducer {
                             response.content().retain();
 
                             // need to release the response when we are done
-                            exchange.addOnCompletion(new SynchronizationAdapter(){
+                            exchange.addOnCompletion(new SynchronizationAdapter() {
                                 @Override
                                 public void onDone(Exchange exchange) {
                                     if (response.refCnt() > 0) {
@@ -130,7 +128,7 @@ public class NettyHttpProducer extends NettyProducer {
 
                             // the actual url is stored on the IN message in the getRequestBody method as its accessed on-demand
                             String actualUrl = exchange.getIn().getHeader(Exchange.HTTP_URL, String.class);
-                            int code = response.getStatus() != null ? response.getStatus().code() : -1;
+                            int code = response.status() != null ? response.status().code() : -1;
                             log.debug("Http responseCode: {}", code);
 
                             // if there was a http error code then check if we should throw an exception

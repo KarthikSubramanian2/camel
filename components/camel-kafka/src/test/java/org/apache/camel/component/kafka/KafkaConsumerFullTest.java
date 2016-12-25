@@ -34,7 +34,7 @@ public class KafkaConsumerFullTest extends BaseEmbeddedKafkaTest {
 
     public static final String TOPIC = "test";
 
-    @EndpointInject(uri = "kafka:localhost:{{karfkaPort}}?topic=" + TOPIC
+    @EndpointInject(uri = "kafka:localhost:{{kafkaPort}}?topic=" + TOPIC
             + "&groupId=group1&autoOffsetReset=earliest&keyDeserializer=org.apache.kafka.common.serialization.StringDeserializer&"
             + "valueDeserializer=org.apache.kafka.common.serialization.StringDeserializer"
             + "&autoCommitIntervalMs=1000&sessionTimeoutMs=30000&autoCommitEnable=true")
@@ -48,7 +48,7 @@ public class KafkaConsumerFullTest extends BaseEmbeddedKafkaTest {
     @Before
     public void before() {
         Properties props = new Properties();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:" + getKarfkaPort());
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:" + getKafkaPort());
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, KafkaConstants.KAFKA_DEFAULT_SERIALIZER);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, KafkaConstants.KAFKA_DEFAULT_SERIALIZER);
         props.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, KafkaConstants.KAFKA_DEFAULT_PARTITIONER);
@@ -76,7 +76,7 @@ public class KafkaConsumerFullTest extends BaseEmbeddedKafkaTest {
     }
 
     @Test
-    public void kaftMessageIsConsumedByCamel() throws InterruptedException, IOException {
+    public void kafkaMessageIsConsumedByCamel() throws InterruptedException, IOException {
         to.expectedMessageCount(5);
         to.expectedBodiesReceivedInAnyOrder("message-0", "message-1", "message-2", "message-3", "message-4");
         for (int k = 0; k < 5; k++) {
@@ -89,7 +89,7 @@ public class KafkaConsumerFullTest extends BaseEmbeddedKafkaTest {
 
     @Test
     @Ignore("Currently there is a bug in kafka which leads to an uninterruptable thread so a resub take too long (works manually)")
-    public void kaftMessageIsConsumedByCamelSeekedToBeginning() throws Exception {
+    public void kafkaMessageIsConsumedByCamelSeekedToBeginning() throws Exception {
         to.expectedMessageCount(5);
         to.expectedBodiesReceivedInAnyOrder("message-0", "message-1", "message-2", "message-3", "message-4");
         for (int k = 0; k < 5; k++) {
@@ -108,7 +108,7 @@ public class KafkaConsumerFullTest extends BaseEmbeddedKafkaTest {
         context.stopRoute("foo");
 
         KafkaEndpoint kafkaEndpoint = (KafkaEndpoint) from;
-        kafkaEndpoint.setSeekToBeginning(true);
+        kafkaEndpoint.getConfiguration().setSeekToBeginning(true);
 
         context.startRoute("foo");
 

@@ -31,8 +31,8 @@ import org.apache.camel.Processor;
 import org.apache.camel.ShutdownRunningTask;
 import org.apache.camel.impl.ScheduledBatchPollingConsumer;
 import org.apache.camel.util.CastUtils;
-import org.apache.camel.util.ObjectHelper;
 import org.apache.camel.util.StopWatch;
+import org.apache.camel.util.StringHelper;
 import org.apache.camel.util.TimeUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +44,6 @@ public abstract class GenericFileConsumer<T> extends ScheduledBatchPollingConsum
     protected final Logger log = LoggerFactory.getLogger(getClass());
     protected GenericFileEndpoint<T> endpoint;
     protected GenericFileOperations<T> operations;
-    protected volatile boolean loggedIn;
     protected String fileExpressionResult;
     protected volatile ShutdownRunningTask shutdownRunningTask;
     protected volatile int pendingExchanges;
@@ -59,16 +58,8 @@ public abstract class GenericFileConsumer<T> extends ScheduledBatchPollingConsum
         this.endpoint = endpoint;
         this.operations = operations;
 
-        if (endpoint.getInclude() != null) {
-            this.includePattern = Pattern.compile(endpoint.getInclude(), Pattern.CASE_INSENSITIVE);
-        } else {
-            this.includePattern = null;
-        }
-        if (endpoint.getExclude() != null) {
-            this.excludePattern = Pattern.compile(endpoint.getExclude(), Pattern.CASE_INSENSITIVE);
-        } else {
-            this.excludePattern = null;
-        }
+        this.includePattern = endpoint.getIncludePattern();
+        this.excludePattern = endpoint.getExcludePattern();
     }
 
     public Processor getCustomProcessor() {
@@ -125,7 +116,7 @@ public abstract class GenericFileConsumer<T> extends ScheduledBatchPollingConsum
         List<GenericFile<T>> files = new ArrayList<GenericFile<T>>();
         String name = endpoint.getConfiguration().getDirectory();
 
-        // time how long time it takes to poll
+        // time how long it takes to poll
         StopWatch stop = new StopWatch();
         boolean limitHit;
         try {
@@ -145,12 +136,12 @@ public abstract class GenericFileConsumer<T> extends ScheduledBatchPollingConsum
 
         // log if we hit the limit
         if (limitHit) {
-            log.debug("Limiting maximum messages to poll at {} files as there was more messages in this poll.", maxMessagesPerPoll);
+            log.debug("Limiting maximum messages to poll at {} files as there were more messages in this poll.", maxMessagesPerPoll);
         }
 
         // sort files using file comparator if provided
         if (endpoint.getSorter() != null) {
-            Collections.sort(files, endpoint.getSorter());
+            files.sort(endpoint.getSorter());
         }
 
         // sort using build in sorters so we can use expressions
@@ -164,7 +155,7 @@ public abstract class GenericFileConsumer<T> extends ScheduledBatchPollingConsum
         }
         // sort files using exchange comparator if provided
         if (endpoint.getSortBy() != null) {
-            Collections.sort(exchanges, endpoint.getSortBy());
+            exchanges.sort(endpoint.getSortBy());
         }
         if (endpoint.isShuffle()) {
             Collections.shuffle(exchanges);
@@ -176,7 +167,7 @@ public abstract class GenericFileConsumer<T> extends ScheduledBatchPollingConsum
         // we are not eager limiting, but we have configured a limit, so cut the list of files
         if (!eagerLimitMaxMessagesPerPoll && maxMessagesPerPoll > 0) {
             if (files.size() > maxMessagesPerPoll) {
-                log.debug("Limiting maximum messages to poll at {} files as there was more messages in this poll.", maxMessagesPerPoll);
+                log.debug("Limiting maximum messages to poll at {} files as there were more messages in this poll.", maxMessagesPerPoll);
                 // must first remove excessive files from the in progress repository
                 removeExcessiveInProgressFiles(q, maxMessagesPerPoll);
             }
@@ -201,7 +192,7 @@ public abstract class GenericFileConsumer<T> extends ScheduledBatchPollingConsum
 
         // limit if needed
         if (maxMessagesPerPoll > 0 && total > maxMessagesPerPoll) {
-            log.debug("Limiting to maximum messages to poll {} as there was {} messages in this poll.", maxMessagesPerPoll, total);
+            log.debug("Limiting to maximum messages to poll {} as there were {} messages in this poll.", maxMessagesPerPoll, total);
             total = maxMessagesPerPoll;
         }
 
@@ -668,7 +659,7 @@ public abstract class GenericFileConsumer<T> extends ScheduledBatchPollingConsum
         if (endpoint.getDoneFileName() != null) {
             // done file must be in same path as the file
             String doneFileName = endpoint.createDoneFileName(file.getAbsoluteFilePath());
-            ObjectHelper.notEmpty(doneFileName, "doneFileName", endpoint);
+            StringHelper.notEmpty(doneFileName, "doneFileName", endpoint);
 
             // is it a done file name?
             if (endpoint.isDoneFile(file.getFileNameOnly())) {

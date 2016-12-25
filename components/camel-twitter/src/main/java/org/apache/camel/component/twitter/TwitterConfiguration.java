@@ -36,29 +36,29 @@ public class TwitterConfiguration {
     private String kind;
     @UriParam(label = "consumer", defaultValue = "direct", enums = "polling,direct,event")
     private EndpointType type = EndpointType.DIRECT;
-    @UriParam
+    @UriParam(label = "security", secret = true)
     private String accessToken;
-    @UriParam
+    @UriParam(label = "security", secret = true)
     private String accessTokenSecret;
-    @UriParam
+    @UriParam(label = "security", secret = true)
     private String consumerKey;
-    @UriParam
+    @UriParam(label = "security", secret = true)
     private String consumerSecret;
     @UriParam
     private String user;
-    @UriParam(label = "filter")
+    @UriParam(label = "consumer,filter")
     private String keywords;
-    @UriParam(label = "filter")
+    @UriParam(label = "consumer,filter")
     private String userIds;
-    @UriParam(label = "filter", defaultValue = "true")
+    @UriParam(label = "consumer,filter", defaultValue = "true")
     private boolean filterOld = true;
-    @UriParam(label = "filter", defaultValue = "1")
+    @UriParam(label = "consumer,filter", defaultValue = "1")
     private long sinceId  = 1;
-    @UriParam(label = "filter")
+    @UriParam(label = "consumer,filter")
     private String lang;
-    @UriParam(label = "filter")
+    @UriParam(label = "consumer,filter")
     private Integer count;
-    @UriParam(label = "filter", defaultValue = "1")
+    @UriParam(label = "consumer,filter", defaultValue = "1")
     private Integer numberOfPages = 1;
     @UriParam(label = "proxy")
     private String httpProxyHost;

@@ -23,8 +23,7 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.junit.Test;
 
-//@Ignore("Etcd must be started manually")
-public class EtcdWatchTest extends EtcdTest {
+public class EtcdWatchTest extends EtcdTestSupport {
 
     @Test
     public void testWatchWithPath() throws Exception {
@@ -103,7 +102,7 @@ public class EtcdWatchTest extends EtcdTest {
                 from("etcd:watch/myKey1")
                     .process(NODE_TO_VALUE_IN)
                     .to("mock:watch-with-path");
-                fromF("etcd:watch/myKeyRecovery?timeout=%d&fromIndex=%d", 1000 * 60 * 5, 1)
+                fromF("etcd:watch/myKeyRecovery?timeout=%s&fromIndex=%s", 1000 * 60 * 5, 1)
                     .id("watchRecovery")
                     .autoStartup(false)
                     .process(NODE_TO_VALUE_IN)

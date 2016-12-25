@@ -25,8 +25,7 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.junit.Test;
 
-//@Ignore("Etcd must be started manually")
-public class EtcdStatsTest extends EtcdTest {
+public class EtcdStatsTest extends EtcdTestSupport {
 
     @Test
     public void testStats() throws Exception {
@@ -65,11 +64,11 @@ public class EtcdStatsTest extends EtcdTest {
         return new RouteBuilder() {
             public void configure() {
                 // CONSUMER
-                from("etcd:stats/leader?consumer.delay=50&consumer.initialDelay=0")
+                from("etcd:stats/leader?delay=50&initialDelay=0")
                     .to("mock:stats-leader-consumer");
-                from("etcd:stats/self?consumer.delay=50&consumer.initialDelay=0")
+                from("etcd:stats/self?delay=50&initialDelay=0")
                     .to("mock:stats-self-consumer");
-                from("etcd:stats/store?consumer.delay=50&consumer.initialDelay=0")
+                from("etcd:stats/store?delay=50&initialDelay=0")
                     .to("mock:stats-store-consumer");
 
                 // PRODUCER

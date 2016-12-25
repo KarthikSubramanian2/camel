@@ -24,6 +24,7 @@ import java.lang.reflect.Field;
 import java.net.URI;
 import java.security.GeneralSecurityException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
@@ -33,9 +34,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.Stack;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.apache.camel.component.salesforce.SalesforceEndpointConfig;
 import org.apache.camel.component.salesforce.SalesforceHttpClient;
@@ -47,6 +53,7 @@ import org.apache.camel.component.salesforce.api.dto.PickListValue;
 import org.apache.camel.component.salesforce.api.dto.SObject;
 import org.apache.camel.component.salesforce.api.dto.SObjectDescription;
 import org.apache.camel.component.salesforce.api.dto.SObjectField;
+import org.apache.camel.component.salesforce.api.utils.JsonUtils;
 import org.apache.camel.component.salesforce.internal.PayloadFormat;
 import org.apache.camel.component.salesforce.internal.SalesforceSession;
 import org.apache.camel.component.salesforce.internal.client.DefaultRestClient;
@@ -55,6 +62,7 @@ import org.apache.camel.component.salesforce.internal.client.SyncResponseCallbac
 import org.apache.camel.util.IntrospectionSupport;
 import org.apache.camel.util.ObjectHelper;
 import org.apache.camel.util.jsse.SSLContextParameters;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -67,7 +75,6 @@ import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.log.Log4JLogChute;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.eclipse.jetty.client.HttpProxy;
 import org.eclipse.jetty.client.Origin;
 import org.eclipse.jetty.client.ProxyConfiguration;
@@ -80,17 +87,22 @@ import org.eclipse.jetty.util.ssl.SslContextFactory;
 /**
  * Goal to generate DTOs for Salesforce SObjects
  */
-@Mojo(name = "generate", defaultPhase = LifecyclePhase.GENERATE_SOURCES)
+@Mojo(name = "generate", requiresProject = false, defaultPhase = LifecyclePhase.GENERATE_SOURCES)
 public class CamelSalesforceMojo extends AbstractMojo {
 
     // default connect and call timeout
     protected static final int DEFAULT_TIMEOUT = 60000;
 
     private static final String JAVA_EXT = ".java";
-    private static final String PACKAGE_NAME_PATTERN = "^[a-z]+(\\.[a-z][a-z0-9]*)*$";
+    private static final String PACKAGE_NAME_PATTERN = "(\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*\\.)+\\p{javaJavaIdentifierStart}\\p{javaJavaIdentifierPart}*";
+
+    private static final Pattern MATCH_EVERYTHING_PATTERN = Pattern.compile(".*");
+    private static final Pattern MATCH_NOTHING_PATTERN = Pattern.compile("^$");
 
     private static final String SOBJECT_POJO_VM = "/sobject-pojo.vm";
+    private static final String SOBJECT_POJO_OPTIONAL_VM = "/sobject-pojo-optional.vm";
     private static final String SOBJECT_QUERY_RECORDS_VM = "/sobject-query-records.vm";
+    private static final String SOBJECT_QUERY_RECORDS_OPTIONAL_VM = "/sobject-query-records-optional.vm";
     private static final String SOBJECT_PICKLIST_VM = "/sobject-picklist.vm";
 
     // used for velocity logging, to avoid creating velocity.log
@@ -141,7 +153,7 @@ public class CamelSalesforceMojo extends AbstractMojo {
     /**
      * Addresses to NOT Proxy.
      */
-    @Parameter(property = "camelSalesforce.httpProxyIncludedAddresses")
+    @Parameter(property = "camelSalesforce.httpProxyExcludedAddresses")
     protected Set<String> httpProxyExcludedAddresses;
 
     /**
@@ -247,6 +259,12 @@ public class CamelSalesforceMojo extends AbstractMojo {
     @Parameter(property = "camelSalesforce.packageName", defaultValue = "org.apache.camel.salesforce.dto")
     protected String packageName;
 
+    @Parameter(property = "camelSalesforce.useOptionals", defaultValue = "false")
+    protected boolean useOptionals;
+
+    @Parameter(property = "camelSalesforce.useStringsForPicklists", defaultValue = "false")
+    protected Boolean useStringsForPicklists;
+
     private VelocityEngine engine;
     private long responseTimeout;
 
@@ -266,7 +284,10 @@ public class CamelSalesforceMojo extends AbstractMojo {
         engine.init();
 
         // make sure we can load both templates
-        if (!engine.resourceExists(SOBJECT_POJO_VM) || !engine.resourceExists(SOBJECT_QUERY_RECORDS_VM)) {
+        if (!engine.resourceExists(SOBJECT_POJO_VM)
+                || !engine.resourceExists(SOBJECT_QUERY_RECORDS_VM)
+                || !engine.resourceExists(SOBJECT_POJO_OPTIONAL_VM)
+                || !engine.resourceExists(SOBJECT_QUERY_RECORDS_OPTIONAL_VM)) {
             throw new MojoExecutionException("Velocity templates not found");
         }
 
@@ -297,7 +318,7 @@ public class CamelSalesforceMojo extends AbstractMojo {
 
         try {
             // use Jackson json
-            final ObjectMapper mapper = new ObjectMapper();
+            final ObjectMapper mapper = JsonUtils.createObjectMapper();
 
             // call getGlobalObjects to get all SObjects
             final Set<String> objectNames = new TreeSet<String>();
@@ -320,7 +341,7 @@ public class CamelSalesforceMojo extends AbstractMojo {
                     objectNames.add(sObject.getName());
                 }
             } catch (Exception e) {
-                String msg = "Error getting global Objects " + e.getMessage();
+                String msg = "Error getting global Objects: " + e.getMessage();
                 throw new MojoExecutionException(msg, e);
             }
 
@@ -363,6 +384,9 @@ public class CamelSalesforceMojo extends AbstractMojo {
             if (!packageName.matches(PACKAGE_NAME_PATTERN)) {
                 throw new MojoExecutionException("Invalid package name " + packageName);
             }
+            if (outputDirectory.getAbsolutePath().contains("$")) {
+                outputDirectory = new File("generated-sources/camel-salesforce");
+            }
             final File pkgDir = new File(outputDirectory, packageName.trim().replace('.', File.separatorChar));
             if (!pkgDir.exists()) {
                 if (!pkgDir.mkdirs()) {
@@ -372,7 +396,7 @@ public class CamelSalesforceMojo extends AbstractMojo {
 
             getLog().info("Generating Java Classes...");
             // generate POJOs for every object description
-            final GeneratorUtility utility = new GeneratorUtility();
+            final GeneratorUtility utility = new GeneratorUtility(useStringsForPicklists);
             // should we provide a flag to control timestamp generation?
             final String generatedDate = new Date().toString();
             for (SObjectDescription description : descriptions) {
@@ -432,10 +456,10 @@ public class CamelSalesforceMojo extends AbstractMojo {
             incPattern = Pattern.compile(includePattern.trim());
         } else if (includedNames.isEmpty()) {
             // include everything by default if no include names are set
-            incPattern = Pattern.compile(".*");
+            incPattern = MATCH_EVERYTHING_PATTERN;
         } else {
             // include nothing by default if include names are set
-            incPattern = Pattern.compile("^$");
+            incPattern = MATCH_NOTHING_PATTERN;
         }
 
         // check whether a pattern is in effect
@@ -444,7 +468,7 @@ public class CamelSalesforceMojo extends AbstractMojo {
             excPattern = Pattern.compile(excludePattern.trim());
         } else {
             // exclude nothing by default
-            excPattern = Pattern.compile("^$");
+            excPattern = MATCH_NOTHING_PATTERN;
         }
 
         final Set<String> acceptedNames = new HashSet<String>();
@@ -554,7 +578,7 @@ public class CamelSalesforceMojo extends AbstractMojo {
         String fileName = description.getName() + JAVA_EXT;
         BufferedWriter writer = null;
         try {
-            final File pojoFile = new File(pkgDir, fileName);
+            File pojoFile = new File(pkgDir, fileName);
             writer = new BufferedWriter(new FileWriter(pojoFile));
 
             VelocityContext context = new VelocityContext();
@@ -562,16 +586,28 @@ public class CamelSalesforceMojo extends AbstractMojo {
             context.put("utility", utility);
             context.put("desc", description);
             context.put("generatedDate", generatedDate);
+            context.put("useStringsForPicklists", useStringsForPicklists);
 
-            Template pojoTemplate = engine.getTemplate(SOBJECT_POJO_VM);
+            Template pojoTemplate;
+            pojoTemplate = engine.getTemplate(SOBJECT_POJO_VM);
             pojoTemplate.merge(context, writer);
             // close pojoFile
             writer.close();
 
+            if (useOptionals) {
+                fileName = description.getName() + "Optional" + JAVA_EXT;
+                pojoTemplate = engine.getTemplate(SOBJECT_POJO_OPTIONAL_VM);
+                pojoFile = new File(pkgDir, fileName);
+                writer = new BufferedWriter(new FileWriter(pojoFile));
+                pojoTemplate.merge(context, writer);
+                // close pojoFile
+                writer.close();
+            }
             // write required Enumerations for any picklists
             for (SObjectField field : description.getFields()) {
                 if (utility.isPicklist(field) || utility.isMultiSelectPicklist(field)) {
-                    fileName = utility.enumTypeName(field.getName()) + JAVA_EXT;
+                    String enumName = description.getName() + "_" + utility.enumTypeName(field.getName());
+                    fileName = enumName + JAVA_EXT;
                     File enumFile = new File(pkgDir, fileName);
                     writer = new BufferedWriter(new FileWriter(enumFile));
 
@@ -579,6 +615,7 @@ public class CamelSalesforceMojo extends AbstractMojo {
                     context.put("packageName", packageName);
                     context.put("utility", utility);
                     context.put("field", field);
+                    context.put("enumName", enumName);
                     context.put("generatedDate", generatedDate);
 
                     Template queryTemplate = engine.getTemplate(SOBJECT_PICKLIST_VM);
@@ -604,6 +641,24 @@ public class CamelSalesforceMojo extends AbstractMojo {
 
             // close QueryRecords file
             writer.close();
+
+            if (useOptionals) {
+                // write the QueryRecords Optional class
+                fileName = "QueryRecords" + description.getName() + "Optional" + JAVA_EXT;
+                queryFile = new File(pkgDir, fileName);
+                writer = new BufferedWriter(new FileWriter(queryFile));
+
+                context = new VelocityContext();
+                context.put("packageName", packageName);
+                context.put("desc", description);
+                context.put("generatedDate", generatedDate);
+
+                queryTemplate = engine.getTemplate(SOBJECT_QUERY_RECORDS_OPTIONAL_VM);
+                queryTemplate.merge(context, writer);
+
+                // close QueryRecords file
+                writer.close();
+            }
 
         } catch (Exception e) {
             String msg = "Error creating " + fileName + ": " + e.getMessage();
@@ -647,8 +702,7 @@ public class CamelSalesforceMojo extends AbstractMojo {
                 {"byte", "Byte"},
 //                {"QName", "javax.xml.namespace.QName"},
 
-//                {"dateTime", "javax.xml.datatype.XMLGregorianCalendar"},
-                {"dateTime", "org.joda.time.DateTime"},
+                {"dateTime", "java.time.ZonedDateTime"},
 
                     // the blob base64Binary type is mapped to String URL for retrieving the blob
                 {"base64Binary", "String"},
@@ -659,11 +713,11 @@ public class CamelSalesforceMojo extends AbstractMojo {
                 {"unsignedByte", "Short"},
 
 //                {"time", "javax.xml.datatype.XMLGregorianCalendar"},
-                {"time", "org.joda.time.DateTime"},
+                {"time", "java.time.ZonedDateTime"},
 //                {"date", "javax.xml.datatype.XMLGregorianCalendar"},
-                {"date", "org.joda.time.DateTime"},
+                {"date", "java.time.ZonedDateTime"},
 //                {"g", "javax.xml.datatype.XMLGregorianCalendar"},
-                {"g", "org.joda.time.DateTime"},
+                {"g", "java.time.ZonedDateTime"},
 
                     // Salesforce maps any types like string, picklist, reference, etc. to string
                 {"anyType", "String"},
@@ -685,6 +739,14 @@ public class CamelSalesforceMojo extends AbstractMojo {
         private static final String BASE64BINARY = "base64Binary";
         private static final String MULTIPICKLIST = "multipicklist";
         private static final String PICKLIST = "picklist";
+        private static final List<String> BLACKLISTED_PROPERTIES = Arrays.asList("PicklistValues", "ChildRelationships");
+        private boolean useStringsForPicklists;
+        private final Map<String, AtomicInteger> varNames = new HashMap<>();
+        private Stack<String> stack;
+
+        public GeneratorUtility(Boolean useStringsForPicklists) {
+            this.useStringsForPicklists = Boolean.TRUE.equals(useStringsForPicklists);
+        }
 
         public boolean isBlobField(SObjectField field) {
             final String soapType = field.getSoapType();
@@ -695,14 +757,22 @@ public class CamelSalesforceMojo extends AbstractMojo {
             return !BASE_FIELDS.contains(name);
         }
 
-        public String getFieldType(SObjectField field) throws MojoExecutionException {
+        public String getFieldType(SObjectDescription description, SObjectField field) throws MojoExecutionException {
             // check if this is a picklist
             if (isPicklist(field)) {
-                // use a pick list enum, which will be created after generating the SObject class
-                return enumTypeName(field.getName());
+                if (useStringsForPicklists) {
+                    return String.class.getName();
+                } else {
+                    // use a pick list enum, which will be created after generating the SObject class
+                    return description.getName() + "_" + enumTypeName(field.getName());
+                }
             } else if (isMultiSelectPicklist(field)) {
-                // use a pick list enum array, enum will be created after generating the SObject class
-                return enumTypeName(field.getName()) + "[]";
+                if (useStringsForPicklists) {
+                    return String.class.getName() + "[]";
+                } else {
+                    // use a pick list enum array, enum will be created after generating the SObject class
+                    return description.getName() + "_" + enumTypeName(field.getName()) + "[]";
+                }
             } else {
                 // map field to Java type
                 final String soapType = field.getSoapType();
@@ -761,7 +831,6 @@ public class CamelSalesforceMojo extends AbstractMojo {
         }
 
         public boolean isPicklist(SObjectField field) {
-//            return field.getPicklistValues() != null && !field.getPicklistValues().isEmpty();
             return PICKLIST.equals(field.getType());
         }
 
@@ -790,6 +859,67 @@ public class CamelSalesforceMojo extends AbstractMojo {
             }
 
             return changed ? result.toString().toUpperCase() : value.toUpperCase();
+        }
+
+        public boolean includeList(final List<?> list, final String propertyName) {
+            return !list.isEmpty() && !BLACKLISTED_PROPERTIES.contains(propertyName);
+        }
+        public boolean notNull(final Object val) {
+            return val != null;
+        }
+
+        public Set<Map.Entry<String, Object>> propertiesOf(final Object object) {
+            final Map<String, Object> properties = new HashMap<>();
+            IntrospectionSupport.getProperties(object, properties, null, false);
+
+            return properties.entrySet().stream()
+                .collect(Collectors.toMap(e -> StringUtils.capitalize(e.getKey()), Map.Entry::getValue)).entrySet();
+        }
+
+        public String variableName(final String given) {
+            final String base = StringUtils.uncapitalize(given);
+
+            AtomicInteger counter = varNames.get(base);
+            if (counter == null) {
+                counter = new AtomicInteger(0);
+                varNames.put(base, counter);
+            }
+
+            return base + counter.incrementAndGet();
+        }
+
+        public boolean isPrimitiveOrBoxed(final Object object) {
+            final Class<?> clazz = object.getClass();
+
+            final boolean isWholeNumberWrapper = Byte.class.equals(clazz) || Short.class.equals(clazz)
+                || Integer.class.equals(clazz) || Long.class.equals(clazz);
+
+            final boolean isFloatingPointWrapper = Double.class.equals(clazz) || Float.class.equals(clazz);
+
+            final boolean isWrapper = isWholeNumberWrapper || isFloatingPointWrapper || Boolean.class.equals(clazz)
+                || Character.class.equals(clazz);
+
+            final boolean isPrimitive = clazz.isPrimitive();
+
+            return isPrimitive || isWrapper;
+        }
+
+        public void start(final String initial) {
+            stack = new Stack<>();
+            stack.push(initial);
+            varNames.clear();
+        }
+
+        public String current() {
+            return stack.peek();
+        }
+
+        public void push(final String additional) {
+            stack.push(additional);
+        }
+
+        public void pop() {
+            stack.pop();
         }
     }
 

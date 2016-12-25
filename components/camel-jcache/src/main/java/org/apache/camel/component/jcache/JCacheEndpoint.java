@@ -22,34 +22,33 @@ import org.apache.camel.Producer;
 import org.apache.camel.impl.DefaultEndpoint;
 import org.apache.camel.spi.Metadata;
 import org.apache.camel.spi.UriEndpoint;
+import org.apache.camel.spi.UriParam;
 import org.apache.camel.spi.UriPath;
 
 /**
- * Represents a JCache endpoint.
+ * The jcache component enables you to perform caching operations using JSR107/JCache as cache implementation.
  */
 @UriEndpoint(scheme = "jcache", title = "JCache", syntax = "jcache:cacheName", consumerClass = JCacheConsumer.class, label = "cache,datagrid,clustering")
 public class JCacheEndpoint extends DefaultEndpoint {
     @UriPath(description = "the cache name")
     @Metadata(required = "true")
     private final String cacheName;
-    private final JCacheConfiguration cacheCnfiguration;
+    
+    @UriParam
+    private final JCacheConfiguration cacheConfiguration;
     private final JCacheManager<Object, Object> cacheManager;
 
-    public JCacheEndpoint(String uri, JCacheComponent component, JCacheConfiguration configuration, String cacheName) {
+    public JCacheEndpoint(String uri, JCacheComponent component, JCacheConfiguration configuration) {
         super(uri, component);
 
-        this.cacheName = cacheName;
-        this.cacheCnfiguration = configuration;
-        this.cacheManager = new JCacheManager<>(
-            configuration,
-            cacheName,
-            getCamelContext().getApplicationContextClassLoader(),
-            super.getCamelContext());
+        this.cacheName = configuration.getCacheName();
+        this.cacheConfiguration = configuration;
+        this.cacheManager = JCacheHelper.createManager(configuration);
     }
 
     @Override
     public Producer createProducer() throws Exception {
-        return new JCacheProducer(this, cacheCnfiguration);
+        return new JCacheProducer(this, cacheConfiguration);
     }
 
     @Override

@@ -16,8 +16,15 @@
  */
 package org.apache.camel.component.kafka;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.camel.AsyncCallback;
 import org.apache.camel.CamelException;
@@ -43,11 +50,13 @@ public class KafkaProducer extends DefaultAsyncProducer {
 
     Properties getProps() {
         Properties props = endpoint.getConfiguration().createProducerProperties();
-        if (endpoint.getBrokers() != null) {
-            props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, endpoint.getBrokers());
+        endpoint.updateClassProperties(props);
+        if (endpoint.getConfiguration().getBrokers() != null) {
+            props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, endpoint.getConfiguration().getBrokers());
         }
         return props;
     }
+
 
     public org.apache.kafka.clients.producer.KafkaProducer getKafkaProducer() {
         return kafkaProducer;
@@ -72,7 +81,14 @@ public class KafkaProducer extends DefaultAsyncProducer {
     protected void doStart() throws Exception {
         Properties props = getProps();
         if (kafkaProducer == null) {
-            kafkaProducer = new org.apache.kafka.clients.producer.KafkaProducer(props);
+            ClassLoader threadClassLoader = Thread.currentThread().getContextClassLoader();
+            try {
+                //Fix for running camel-kafka in OSGI see KAFKA-3218
+                Thread.currentThread().setContextClassLoader(null);
+                kafkaProducer = new org.apache.kafka.clients.producer.KafkaProducer(props);
+            } finally {
+                Thread.currentThread().setContextClassLoader(threadClassLoader);
+            }
         }
 
         // if we are in asynchronous mode we need a worker pool
@@ -96,22 +112,52 @@ public class KafkaProducer extends DefaultAsyncProducer {
     }
 
     @SuppressWarnings("unchecked")
-    protected ProducerRecord createRecorder(Exchange exchange) throws CamelException {
-        String topic = endpoint.getTopic();
+    protected Iterator<ProducerRecord> createRecorder(Exchange exchange) throws CamelException {
+        String topic = endpoint.getConfiguration().getTopic();
         if (!endpoint.isBridgeEndpoint()) {
             topic = exchange.getIn().getHeader(KafkaConstants.TOPIC, topic, String.class);
         }
         if (topic == null) {
             throw new CamelExchangeException("No topic key set", exchange);
         }
-        Object partitionKey = exchange.getIn().getHeader(KafkaConstants.PARTITION_KEY);
-        boolean hasPartitionKey = partitionKey != null;
+        final Object partitionKey = exchange.getIn().getHeader(KafkaConstants.PARTITION_KEY);
+        final boolean hasPartitionKey = partitionKey != null;
 
-        Object messageKey = exchange.getIn().getHeader(KafkaConstants.KEY);
-        boolean hasMessageKey = messageKey != null;
+        final Object messageKey = exchange.getIn().getHeader(KafkaConstants.KEY);
+        final boolean hasMessageKey = messageKey != null;
 
         Object msg = exchange.getIn().getBody();
+        Iterator<Object> iterator = null;
+        if (msg instanceof Iterable) {
+            iterator = ((Iterable<Object>)msg).iterator();
+        } else if (msg instanceof Iterator) {
+            iterator = (Iterator<Object>)msg;
+        }
+        if (iterator != null) {
+            final Iterator<Object> msgList = iterator;
+            final String msgTopic = topic;
+            return new Iterator<ProducerRecord>() {
+                @Override
+                public boolean hasNext() {
+                    return msgList.hasNext();
+                }
 
+                @Override
+                public ProducerRecord next() {
+                    if (hasPartitionKey && hasMessageKey) {
+                        return new ProducerRecord(msgTopic, new Integer(partitionKey.toString()), messageKey, msgList.next());
+                    } else if (hasMessageKey) {
+                        return new ProducerRecord(msgTopic, messageKey, msgList.next());
+                    }
+                    return new ProducerRecord(msgTopic, msgList.next());
+                }
+
+                @Override
+                public void remove() {
+                    msgList.remove();
+                }
+            };
+        }
         ProducerRecord record;
         if (hasPartitionKey && hasMessageKey) {
             record = new ProducerRecord(topic, new Integer(partitionKey.toString()), messageKey, msg);
@@ -121,25 +167,45 @@ public class KafkaProducer extends DefaultAsyncProducer {
             log.warn("No message key or partition key set");
             record = new ProducerRecord(topic, msg);
         }
-        return record;
+        return Collections.singletonList(record).iterator();
     }
 
     @Override
     @SuppressWarnings("unchecked")
     // Camel calls this method if the endpoint isSynchronous(), as the KafkaEndpoint creates a SynchronousDelegateProducer for it
     public void process(Exchange exchange) throws Exception {
-        ProducerRecord record = createRecorder(exchange);
-        kafkaProducer.send(record).get();
+        Iterator<ProducerRecord> c = createRecorder(exchange);
+        List<Future<RecordMetadata>> futures = new LinkedList<Future<RecordMetadata>>();
+        List<RecordMetadata> recordMetadatas = new ArrayList<RecordMetadata>();
+
+        if (endpoint.getConfiguration().isRecordMetadata()) {
+            if (exchange.hasOut()) {
+                exchange.getOut().setHeader(KafkaConstants.KAFKA_RECORDMETA, recordMetadatas);
+            } else {
+                exchange.getIn().setHeader(KafkaConstants.KAFKA_RECORDMETA, recordMetadatas);
+            }
+        }
+
+        while (c.hasNext()) {
+            futures.add(kafkaProducer.send(c.next()));
+        }
+        for (Future<RecordMetadata> f : futures) {
+            //wait for them all to be sent
+            recordMetadatas.add(f.get());
+        }
     }
 
     @Override
     @SuppressWarnings("unchecked")
     public boolean process(Exchange exchange, AsyncCallback callback) {
         try {
-            ProducerRecord record = createRecorder(exchange);
-            kafkaProducer.send(record, new KafkaProducerCallBack(exchange, callback));
-            // return false to process asynchronous
-            return false;
+            Iterator<ProducerRecord> c = createRecorder(exchange);
+            KafkaProducerCallBack cb = new KafkaProducerCallBack(exchange, callback);
+            while (c.hasNext()) {
+                cb.increment();
+                kafkaProducer.send(c.next(), cb);
+            }
+            return cb.allSent();
         } catch (Exception ex) {
             exchange.setException(ex);
         }
@@ -151,10 +217,32 @@ public class KafkaProducer extends DefaultAsyncProducer {
 
         private final Exchange exchange;
         private final AsyncCallback callback;
+        private final AtomicInteger count = new AtomicInteger(1);
+        private final List<RecordMetadata> recordMetadatas = new ArrayList<>();
 
         KafkaProducerCallBack(Exchange exchange, AsyncCallback callback) {
             this.exchange = exchange;
             this.callback = callback;
+            if (endpoint.getConfiguration().isRecordMetadata()) {
+                if (exchange.hasOut()) {
+                    exchange.getOut().setHeader(KafkaConstants.KAFKA_RECORDMETA, recordMetadatas);
+                } else {
+                    exchange.getIn().setHeader(KafkaConstants.KAFKA_RECORDMETA, recordMetadatas);
+                }
+            }
+        }
+
+        void increment() {
+            count.incrementAndGet();
+        }
+
+        boolean allSent() {
+            if (count.decrementAndGet() == 0) {
+                //was able to get all the work done while queuing the requests
+                callback.done(true);
+                return true;
+            }
+            return false;
         }
 
         @Override
@@ -162,14 +250,19 @@ public class KafkaProducer extends DefaultAsyncProducer {
             if (e != null) {
                 exchange.setException(e);
             }
-            // use worker pool to continue routing the exchange
-            // as this thread is from Kafka Callback and should not be used by Camel routing
-            workerPool.submit(new Runnable() {
-                @Override
-                public void run() {
-                    callback.done(false);
-                }
-            });
+
+            recordMetadatas.add(recordMetadata);
+
+            if (count.decrementAndGet() == 0) {
+                // use worker pool to continue routing the exchange
+                // as this thread is from Kafka Callback and should not be used by Camel routing
+                workerPool.submit(new Runnable() {
+                    @Override
+                    public void run() {
+                        callback.done(false);
+                    }
+                });
+            }
         }
     }
 

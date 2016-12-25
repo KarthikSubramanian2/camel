@@ -23,16 +23,23 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.camel.CamelContext;
 import org.apache.camel.Endpoint;
+import org.apache.camel.Producer;
 import org.apache.camel.ResolveEndpointFailedException;
 import org.apache.camel.http.common.HttpBinding;
 import org.apache.camel.http.common.HttpCommonComponent;
 import org.apache.camel.http.common.HttpConfiguration;
 import org.apache.camel.http.common.HttpHelper;
+import org.apache.camel.http.common.HttpRestHeaderFilterStrategy;
 import org.apache.camel.http.common.UrlRewrite;
 import org.apache.camel.spi.HeaderFilterStrategy;
+import org.apache.camel.spi.Metadata;
+import org.apache.camel.spi.RestProducerFactory;
+import org.apache.camel.util.FileUtil;
 import org.apache.camel.util.IntrospectionSupport;
 import org.apache.camel.util.ObjectHelper;
+import org.apache.camel.util.ServiceHelper;
 import org.apache.camel.util.URISupport;
 import org.apache.camel.util.UnsafeUriCharactersEncoder;
 import org.apache.camel.util.jsse.SSLContextParameters;
@@ -59,21 +66,30 @@ import org.slf4j.LoggerFactory;
  *
  * @version 
  */
-public class HttpComponent extends HttpCommonComponent {
+public class HttpComponent extends HttpCommonComponent implements RestProducerFactory {
 
     private static final Logger LOG = LoggerFactory.getLogger(HttpComponent.class);
 
+    @Metadata(label = "advanced")
     protected HttpClientConfigurer httpClientConfigurer;
+    @Metadata(label = "advanced")
     protected HttpClientConnectionManager clientConnectionManager;
+    @Metadata(label = "advanced")
     protected HttpContext httpContext;
+    @Metadata(label = "security")
     protected SSLContextParameters sslContextParameters;
+    @Metadata(label = "security")
     protected X509HostnameVerifier x509HostnameVerifier = new BrowserCompatHostnameVerifier();
+    @Metadata(label = "producer")
     protected CookieStore cookieStore;
 
     // options to the default created http connection manager
+    @Metadata(label = "advanced", defaultValue = "200")
     protected int maxTotalConnections = 200;
+    @Metadata(label = "advanced", defaultValue = "20")
     protected int connectionsPerRoute = 20;
     // It's MILLISECONDS, the default value is always keep alive
+    @Metadata(label = "advanced")
     protected long connectionTimeToLive = -1;
 
     public HttpComponent() {
@@ -317,11 +333,45 @@ public class HttpComponent extends HttpCommonComponent {
 
         return answer;
     }
-    
 
     @Override
     protected boolean useIntrospectionOnEndpoint() {
         return false;
+    }
+
+
+    @Override
+    public Producer createProducer(CamelContext camelContext, String host,
+                                   String verb, String basePath, String uriTemplate, String queryParameters,
+                                   String consumes, String produces, Map<String, Object> parameters) throws Exception {
+
+        // avoid leading slash
+        basePath = FileUtil.stripLeadingSeparator(basePath);
+        uriTemplate = FileUtil.stripLeadingSeparator(uriTemplate);
+
+        // replace http with http4 in the host part
+        host = host.replace("http", "http4");
+
+        // get the endpoint
+        String url;
+        if (uriTemplate != null) {
+
+            url = String.format("%s/%s/%s", host, basePath, uriTemplate);
+        } else {
+            url = String.format("%s/%s", host, basePath);
+        }
+
+        HttpEndpoint endpoint = camelContext.getEndpoint(url, HttpEndpoint.class);
+        if (parameters != null && !parameters.isEmpty()) {
+            setProperties(camelContext, endpoint, parameters);
+        }
+        String path = uriTemplate != null ? uriTemplate : basePath;
+        endpoint.setHeaderFilterStrategy(new HttpRestHeaderFilterStrategy(path, queryParameters));
+
+        // the endpoint must be started before creating the producer
+        ServiceHelper.startService(endpoint);
+
+        return endpoint.createProducer();
     }
 
     public HttpClientConfigurer getHttpClientConfigurer() {

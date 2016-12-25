@@ -36,6 +36,7 @@ import org.w3c.dom.NodeList;
 import org.apache.camel.Converter;
 import org.apache.camel.Exchange;
 import org.apache.camel.FallbackConverter;
+import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.StreamCache;
 import org.apache.camel.TypeConverter;
 import org.apache.camel.component.cxf.CxfPayload;
@@ -123,54 +124,61 @@ public final class CxfPayloadConverter {
         // use fallback type converter, so we can probably convert into
         // CxfPayloads from other types
         if (type.isAssignableFrom(CxfPayload.class)) {
-            if (!value.getClass().isArray()) {
-                Source src = null;
-                // many of the common format that can have a Source created directly
-                if (value instanceof InputStream) {
-                    src = new StreamSource((InputStream) value);
-                } else if (value instanceof Reader) {
-                    src = new StreamSource((Reader) value);
-                } else if (value instanceof String) {
-                    src = new StreamSource(new StringReader((String) value));
-                } else if (value instanceof Node) {
-                    src = new DOMSource((Node) value);
-                } else if (value instanceof Source) {
-                    src = (Source) value;
-                }
-                if (src == null) {
-                    // assuming staxsource is preferred, otherwise use the one preferred
-                    TypeConverter tc = registry.lookup(javax.xml.transform.stax.StAXSource.class, value.getClass());
-                    if (tc == null) {
-                        tc = registry.lookup(Source.class, value.getClass());
+            try {
+                if (!value.getClass().isArray()) {
+                    Source src = null;
+                    // many of the common format that can have a Source created
+                    // directly
+                    if (value instanceof InputStream) {
+                        src = new StreamSource((InputStream)value);
+                    } else if (value instanceof Reader) {
+                        src = new StreamSource((Reader)value);
+                    } else if (value instanceof String) {
+                        src = new StreamSource(new StringReader((String)value));
+                    } else if (value instanceof Node) {
+                        src = new DOMSource((Node)value);
+                    } else if (value instanceof Source) {
+                        src = (Source)value;
                     }
-                    if (tc != null) {
-                        src = tc.convertTo(Source.class, exchange, value);
+                    if (src == null) {
+                        // assuming staxsource is preferred, otherwise use the
+                        // one preferred
+                        TypeConverter tc = registry.lookup(javax.xml.transform.stax.StAXSource.class, value.getClass());
+                        if (tc == null) {
+                            tc = registry.lookup(Source.class, value.getClass());
+                        }
+                        if (tc != null) {
+                            src = tc.convertTo(Source.class, exchange, value);
+                        }
+                    }
+                    if (src != null) {
+                        return (T)sourceToCxfPayload(src, exchange);
                     }
                 }
-                if (src != null) {
-                    return (T) sourceToCxfPayload(src, exchange);
+                TypeConverter tc = registry.lookup(NodeList.class, value.getClass());
+                if (tc != null) {
+                    NodeList nodeList = tc.convertTo(NodeList.class, exchange, value);
+                    return (T)nodeListToCxfPayload(nodeList, exchange);
                 }
-            }
-            TypeConverter tc = registry.lookup(NodeList.class, value.getClass());
-            if (tc != null) {
-                NodeList nodeList = tc.convertTo(NodeList.class, exchange, value);
-                return (T) nodeListToCxfPayload(nodeList, exchange);
-            }
-            tc = registry.lookup(Document.class, value.getClass());
-            if (tc != null) {
-                Document document = tc.convertTo(Document.class, exchange, value);
-                return (T) documentToCxfPayload(document, exchange);
-            }
-            // maybe we can convert via an InputStream
-            CxfPayload<?> p;
-            p = convertVia(InputStream.class, exchange, value, registry);
-            if (p != null) {
-                return (T) p;
-            }
-            // String is the converter of last resort
-            p = convertVia(String.class, exchange, value, registry);
-            if (p != null) {
-                return (T) p;
+                tc = registry.lookup(Document.class, value.getClass());
+                if (tc != null) {
+                    Document document = tc.convertTo(Document.class, exchange, value);
+                    return (T)documentToCxfPayload(document, exchange);
+                }
+                // maybe we can convert via an InputStream
+                CxfPayload<?> p;
+                p = convertVia(InputStream.class, exchange, value, registry);
+                if (p != null) {
+                    return (T)p;
+                }
+                // String is the converter of last resort
+                p = convertVia(String.class, exchange, value, registry);
+                if (p != null) {
+                    return (T)p;
+                }
+            } catch (RuntimeCamelException e) {
+                // the internal conversion to XML can throw an exception if the content is not XML
+                // ignore this and return Void.TYPE to indicate that we cannot convert this
             }
             // no we could not do it currently
             return (T) Void.TYPE;
@@ -195,7 +203,16 @@ public final class CxfPayloadConverter {
                 if (type.isInstance(s)) {
                     return type.cast(s);
                 }
-                TypeConverter tc = registry.lookup(type, Source.class);
+                TypeConverter tc = registry.lookup(type, XMLStreamReader.class);
+                if (tc != null && (s instanceof StaxSource || s instanceof StAXSource)) {
+                    XMLStreamReader r = (s instanceof StAXSource)
+                            ? ((StAXSource)s).getXMLStreamReader() : ((StaxSource) s).getXMLStreamReader();
+                    if (payload.getNsMap() != null) {
+                        r = new DelegatingXMLStreamReader(r, payload.getNsMap());
+                    }
+                    return tc.convertTo(type, exchange, r);
+                }
+                tc = registry.lookup(type, Source.class);
                 if (tc != null) {
                     XMLStreamReader r = null;
                     if (payload.getNsMap() != null) {
@@ -208,13 +225,12 @@ public final class CxfPayloadConverter {
                             s = new StAXSource(new DelegatingXMLStreamReader(r, payload.getNsMap()));
                         }
                     }
-                    T t = tc.convertTo(type, s);
-                    return t;
+                    return tc.convertTo(type, exchange, s);
                 }
             }
             TypeConverter tc = registry.lookup(type, NodeList.class);
             if (tc != null) {
-                Object result = tc.convertTo(type, cxfPayloadToNodeList((CxfPayload<?>) value, exchange));
+                Object result = tc.convertTo(type, exchange, cxfPayloadToNodeList((CxfPayload<?>) value, exchange));
                 if (result == null) {
                     // no we could not do it currently, and we just abort the convert here
                     return (T) Void.TYPE;
@@ -229,7 +245,7 @@ public final class CxfPayloadConverter {
             if (tc != null) {
                 NodeList nodeList = cxfPayloadToNodeList((CxfPayload<?>) value, exchange);
                 if (nodeList.getLength() > 0) {
-                    return tc.convertTo(type, nodeList.item(0));
+                    return tc.convertTo(type, exchange, nodeList.item(0));
                 } else {
                     // no we could not do it currently
                     return (T) Void.TYPE;

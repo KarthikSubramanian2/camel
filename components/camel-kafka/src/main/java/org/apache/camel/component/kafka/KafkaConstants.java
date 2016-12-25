@@ -19,8 +19,8 @@ package org.apache.camel.component.kafka;
 public final class KafkaConstants {
 
     public static final String PARTITION_KEY = "kafka.PARTITION_KEY";
-    public static final String PARTITION = "kafka.EXCHANGE_NAME";
-    public static final String KEY = "kafka.CONTENT_TYPE";
+    public static final String PARTITION = "kafka.PARTITION";
+    public static final String KEY = "kafka.KEY";
     public static final String TOPIC = "kafka.TOPIC";
     public static final String OFFSET = "kafka.OFFSET";
 
@@ -30,6 +30,7 @@ public final class KafkaConstants {
     public static final String KAFKA_DEFAULT_DESERIALIZER  = "org.apache.kafka.common.serialization.StringDeserializer";
     public static final String KAFKA_DEFAULT_PARTITIONER = "org.apache.kafka.clients.producer.internals.DefaultPartitioner";
     public static final String PARTITIONER_RANGE_ASSIGNOR = "org.apache.kafka.clients.consumer.RangeAssignor";
+    public static final String KAFKA_RECORDMETA = "org.apache.kafka.clients.producer.RecordMetadata";
 
     private KafkaConstants() {
         // Utility class

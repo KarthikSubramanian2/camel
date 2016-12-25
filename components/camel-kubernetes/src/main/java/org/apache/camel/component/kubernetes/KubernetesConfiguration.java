@@ -37,56 +37,79 @@ public class KubernetesConfiguration {
     @UriParam
     private DefaultKubernetesClient kubernetesClient;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String username;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String password;
 
-    @UriParam(label = "producer", enums = "listNamespaces,listNamespacesByLabels,getNamespace,createNamespace,deleteNamespace,listServices,listServicesByLabels,getService,createService,"
-            + "deleteService,listReplicationControllers,listReplicationControllersByLabels,getReplicationController,createReplicationController,deleteReplicationController,listPods,"
-            + "listPodsByLabels,getPod,createPod,deletePod,listPersistentVolumes,listPersistentVolumesByLabels,getPersistentVolume,listPersistentVolumesClaims,listPersistentVolumesClaimsByLabels,"
-            + "getPersistentVolumeClaim,createPersistentVolumeClaim,deletePersistentVolumeClaim,listSecrets,listSecretsByLabels,getSecret,createSecret,deleteSecret,listResourcesQuota,"
-            + "listResourcesQuotaByLabels,getResourceQuota,createResourceQuota,deleteResourceQuota,listServiceAccounts,listServiceAccountsByLabels,getServiceAccount,createServiceAccount,"
-            + "deleteServiceAccount,listNodes,listNodesByLabels,getNode,listConfigMaps,listConfigMapsByLabels,getConfigMap,createConfigMap,deleteConfigMap,listBuilds,listBuildsByLabels," 
+    @UriParam(label = "producer", enums = "listNamespaces,listNamespacesByLabels,getNamespace,createNamespace,deleteNamespace,"
+            + "listServices,listServicesByLabels,getService,createService,"
+            + "deleteService,listReplicationControllers,listReplicationControllersByLabels,getReplicationController,"
+            + "createReplicationController,deleteReplicationController,scaleReplicationController,"
+            + "listPods,listPodsByLabels,getPod,createPod,deletePod,listPersistentVolumes,"
+            + "listPersistentVolumesByLabels,getPersistentVolume,listPersistentVolumesClaims,"
+            + "listPersistentVolumesClaimsByLabels,"
+            + "getPersistentVolumeClaim,createPersistentVolumeClaim,deletePersistentVolumeClaim,listSecrets,"
+            + "listSecretsByLabels,getSecret,createSecret,deleteSecret,"
+            + "listResourcesQuota,listResourcesQuotaByLabels,getResourceQuota,"
+            + "createResourceQuota,deleteResourceQuota,listServiceAccounts,listServiceAccountsByLabels,"
+            + "getServiceAccount,createServiceAccount,"
+            + "deleteServiceAccount,listNodes,listNodesByLabels,getNode,listConfigMaps,"
+            + "listConfigMapsByLabels,getConfigMap,createConfigMap,deleteConfigMap,listBuilds,listBuildsByLabels," 
             + "getBuild,listBuildConfigs,listBuildConfigsByLabels,getBuildConfig")
     private String operation;
 
     @UriParam
     private String apiVersion;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String caCertData;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String caCertFile;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String clientCertData;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String clientCertFile;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String clientKeyAlgo;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String clientKeyData;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String clientKeyFile;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String clientKeyPassphrase;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private String oauthToken;
 
-    @UriParam(label = "security")
+    @UriParam(label = "security", secret = true)
     private Boolean trustCerts;
 
     @UriParam(label = "consumer")
-    private String namespaceName;
+    private String namespace;
+    
+    @UriParam(label = "consumer")
+    private String labelKey;
+    
+    @UriParam(label = "consumer")
+    private String labelValue;
+    
+    @UriParam(label = "consumer")
+    private String resourceName;
+
+    @UriParam
+    private String portName;
+
+    @UriParam
+    private String dnsDomain;
     
     @UriParam(label = "consumer", defaultValue = "1")
     private int poolSize = 1;
@@ -279,16 +302,54 @@ public class KubernetesConfiguration {
     }
 
     /**
-     * The namespace name
+     * The namespace
      */
-    public String getNamespaceName() {
-        return namespaceName;
+    public String getNamespace() {
+        return namespace;
     }
 
-    public void setNamespaceName(String namespaceName) {
-        this.namespaceName = namespaceName;
+    public void setNamespace(String namespace) {
+        this.namespace = namespace;
     }
-    
+
+    public String getPortName() {
+        return portName;
+    }
+
+    /**
+     * The port name, used for ServiceCall EIP
+     */
+    public void setPortName(String portName) {
+        this.portName = portName;
+    }
+
+    public String getDnsDomain() {
+        return dnsDomain;
+    }
+
+    /**
+     * The dns domain, used for ServiceCall EIP
+     */
+    public void setDnsDomain(String dnsDomain) {
+        this.dnsDomain = dnsDomain;
+    }
+
+    /**
+     * @deprecated use {@link #getNamespace()}
+     */
+    @Deprecated
+    public String getNamespaceName() {
+        return getNamespace();
+    }
+
+    /**
+     * @deprecated use {@link #setNamespace(String)}
+     */
+    @Deprecated
+    public void setNamespaceName(String namespace) {
+        setNamespace(namespace);
+    }
+
     /**
      * The Consumer pool size
      */
@@ -299,6 +360,40 @@ public class KubernetesConfiguration {
     public void setPoolSize(int poolSize) {
         this.poolSize = poolSize;
     }
+   
+    /**
+     * The Consumer Label key when watching at some resources
+     */
+    public String getLabelKey() {
+        return labelKey;
+    }
+
+    public void setLabelKey(String labelKey) {
+        this.labelKey = labelKey;
+    }
+
+    /**
+     * The Consumer Label value when watching at some resources
+     */
+    public String getLabelValue() {
+        return labelValue;
+    }
+
+    public void setLabelValue(String labelValue) {
+        this.labelValue = labelValue;
+    }
+    
+
+    /**
+     * The Consumer Resource Name we would like to watch
+     */
+    public String getResourceName() {
+        return resourceName;
+    }
+
+    public void setResourceName(String resourceName) {
+        this.resourceName = resourceName;
+    }
 
     @Override
     public String toString() {
@@ -308,6 +403,9 @@ public class KubernetesConfiguration {
                 + ", clientCertData=" + clientCertData + ", clientCertFile=" + clientCertFile + ", clientKeyAlgo="
                 + clientKeyAlgo + ", clientKeyData=" + clientKeyData + ", clientKeyFile=" + clientKeyFile
                 + ", clientKeyPassphrase=" + clientKeyPassphrase + ", oauthToken=" + oauthToken + ", trustCerts="
-                + trustCerts + ", namespaceName=" + namespaceName + "]";
+                + trustCerts + ", namespace=" + namespace + ", labelKey=" + labelKey + ", labelValue=" + labelValue
+                + ", resourceName=" + resourceName + ", portName=" + portName + ", dnsDomain=" + dnsDomain
+                + ", poolSize=" + poolSize + "]";
     }
+
 }

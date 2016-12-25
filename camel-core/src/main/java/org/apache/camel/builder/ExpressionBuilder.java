@@ -19,16 +19,21 @@ package org.apache.camel.builder;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.camel.CamelContext;
@@ -40,6 +45,7 @@ import org.apache.camel.InvalidPayloadException;
 import org.apache.camel.Message;
 import org.apache.camel.NoSuchEndpointException;
 import org.apache.camel.NoSuchLanguageException;
+import org.apache.camel.NoTypeConversionAvailableException;
 import org.apache.camel.Producer;
 import org.apache.camel.component.bean.BeanInvocation;
 import org.apache.camel.component.properties.PropertiesComponent;
@@ -64,6 +70,7 @@ import org.apache.camel.util.IOHelper;
 import org.apache.camel.util.MessageHelper;
 import org.apache.camel.util.ObjectHelper;
 import org.apache.camel.util.OgnlHelper;
+import org.apache.camel.util.SkipIterator;
 import org.apache.camel.util.StringHelper;
 
 
@@ -74,12 +81,50 @@ import org.apache.camel.util.StringHelper;
  */
 public final class ExpressionBuilder {
 
+    private static final Pattern OFFSET_PATTERN = Pattern.compile("([+-])([^+-]+)");
+
     /**
      * Utility classes should not have a public constructor.
      */
     private ExpressionBuilder() {
     }
     
+    /**
+     * Returns an expression for the inbound message attachments
+     *
+     * @return an expression object which will return the inbound message attachments
+     */
+    public static Expression attachmentObjectsExpression() {
+        return new ExpressionAdapter() {
+            public Object evaluate(Exchange exchange) {
+                return exchange.getIn().getAttachmentObjects();
+            }
+
+            @Override
+            public String toString() {
+                return "attachmentObjects";
+            }
+        };
+    }
+
+    /**
+     * Returns an expression for the inbound message attachments
+     *
+     * @return an expression object which will return the inbound message attachments
+     */
+    public static Expression attachmentObjectValuesExpression() {
+        return new ExpressionAdapter() {
+            public Object evaluate(Exchange exchange) {
+                return exchange.getIn().getAttachmentObjects().values();
+            }
+
+            @Override
+            public String toString() {
+                return "attachmentObjects";
+            }
+        };
+    }
+
     /**
      * Returns an expression for the inbound message attachments
      *
@@ -857,6 +902,80 @@ public final class ExpressionBuilder {
     }
 
     /**
+     * Returns a functional expression for the exchanges inbound message body
+     */
+    public static Expression bodyExpression(final Function<Object, Object> function) {
+        return new ExpressionAdapter() {
+            public Object evaluate(Exchange exchange) {
+                return function.apply(
+                    exchange.getIn().getBody()
+                );
+            }
+
+            @Override
+            public String toString() {
+                return "bodyExpression";
+            }
+        };
+    }
+
+    /**
+     * Returns a functional expression for the exchanges inbound message body and headers
+     */
+    public static Expression bodyExpression(final BiFunction<Object, Map<String, Object>, Object> function) {
+        return new ExpressionAdapter() {
+            public Object evaluate(Exchange exchange) {
+                return function.apply(
+                    exchange.getIn().getBody(),
+                    exchange.getIn().getHeaders()
+                );
+            }
+
+            @Override
+            public String toString() {
+                return "bodyExpression";
+            }
+        };
+    }
+
+    /**
+     * Returns a functional expression for the exchanges inbound message body converted to a desired type
+     */
+    public static <T> Expression bodyExpression(final Class<T> bodyType, final Function<T, Object> function) {
+        return new ExpressionAdapter() {
+            public Object evaluate(Exchange exchange) {
+                return function.apply(
+                    exchange.getIn().getBody(bodyType)
+                );
+            }
+
+            @Override
+            public String toString() {
+                return "bodyExpression (" + bodyType +  ")";
+            }
+        };
+    }
+
+    /**
+     * Returns a functional expression for the exchanges inbound message body converted to a desired type and headers
+     */
+    public static <T> Expression bodyExpression(final Class<T> bodyType, final BiFunction<T, Map<String, Object>, Object> function) {
+        return new ExpressionAdapter() {
+            public Object evaluate(Exchange exchange) {
+                return function.apply(
+                    exchange.getIn().getBody(bodyType),
+                    exchange.getIn().getHeaders()
+                );
+            }
+
+            @Override
+            public String toString() {
+                return "bodyExpression (" + bodyType +  ")";
+            }
+        };
+    }
+
+    /**
      * Returns the expression for the exchanges inbound message body invoking methods defined
      * in a simple OGNL notation
      *
@@ -1283,6 +1402,36 @@ public final class ExpressionBuilder {
     }
 
     /**
+     * Returns a functional expression for the exchange
+     */
+    public static Expression exchangeExpression(final Function<Exchange, Object> function) {
+        return new ExpressionAdapter() {
+            public Object evaluate(Exchange exchange) {
+                return function.apply(exchange);
+            }
+
+            @Override
+            public String toString() {
+                return "exchangeExpression";
+            }
+        };
+    }
+
+    /**
+     * Returns the expression for the IN message
+     */
+    public static Expression messageExpression() {
+        return inMessageExpression();
+    }
+
+    /**
+     * Returns a functional expression for the IN message
+     */
+    public static Expression messageExpression(final Function<Message, Object> function) {
+        return inMessageExpression(function);
+    }
+
+    /**
      * Returns the expression for the IN message
      */
     public static Expression inMessageExpression() {
@@ -1299,6 +1448,22 @@ public final class ExpressionBuilder {
     }
 
     /**
+     * Returns a functional expression for the IN message
+     */
+    public static Expression inMessageExpression(final Function<Message, Object> function) {
+        return new ExpressionAdapter() {
+            public Object evaluate(Exchange exchange) {
+                return function.apply(exchange.getIn());
+            }
+
+            @Override
+            public String toString() {
+                return "inMessageExpression";
+            }
+        };
+    }
+
+    /**
      * Returns the expression for the OUT message
      */
     public static Expression outMessageExpression() {
@@ -1310,6 +1475,22 @@ public final class ExpressionBuilder {
             @Override
             public String toString() {
                 return "outMessage";
+            }
+        };
+    }
+
+    /**
+     * Returns a functional expression for the OUT message
+     */
+    public static Expression outMessageExpression(final Function<Message, Object> function) {
+        return new ExpressionAdapter() {
+            public Object evaluate(Exchange exchange) {
+                return function.apply(exchange.getOut());
+            }
+
+            @Override
+            public String toString() {
+                return "outMessageExpression";
             }
         };
     }
@@ -1486,6 +1667,22 @@ public final class ExpressionBuilder {
         };
     }
 
+    public static Expression skipIteratorExpression(final Expression expression, final int skip) {
+        return new ExpressionAdapter() {
+            public Object evaluate(Exchange exchange) {
+                // evaluate expression as iterator
+                Iterator<?> it = expression.evaluate(exchange, Iterator.class);
+                ObjectHelper.notNull(it, "expression: " + expression + " evaluated on " + exchange + " must return an java.util.Iterator");
+                return new SkipIterator(exchange, it, skip);
+            }
+
+            @Override
+            public String toString() {
+                return "skip " + expression + " " + skip + " times";
+            }
+        };
+    }
+
     /**
      * Returns a sort expression which will sort the expression with the given comparator.
      * <p/>
@@ -1496,7 +1693,7 @@ public final class ExpressionBuilder {
         return new ExpressionAdapter() {
             public Object evaluate(Exchange exchange) {
                 List<?> list = expression.evaluate(exchange, List.class);
-                Collections.sort(list, comparator);
+                list.sort(comparator);
                 return list;
             }
 
@@ -1688,9 +1885,30 @@ public final class ExpressionBuilder {
         };
     }
 
+    public static Expression dateExpression(final String command) {
+        return dateExpression(command, null, null);
+    }
+
     public static Expression dateExpression(final String command, final String pattern) {
+        return dateExpression(command, null, pattern);
+    }
+
+    public static Expression dateExpression(final String commandWithOffsets, final String timezone, final String pattern) {
         return new ExpressionAdapter() {
             public Object evaluate(Exchange exchange) {
+                // Capture optional time offsets
+                String command = commandWithOffsets.split("[+-]", 2)[0].trim();
+                List<Long> offsets = new ArrayList<>();
+                Matcher offsetMatcher = OFFSET_PATTERN.matcher(commandWithOffsets);
+                while (offsetMatcher.find()) {
+                    try {
+                        long value = exchange.getContext().getTypeConverter().mandatoryConvertTo(long.class, exchange, offsetMatcher.group(2).trim());
+                        offsets.add(offsetMatcher.group(1).equals("+") ? value : -value);
+                    } catch (NoTypeConversionAvailableException e) {
+                        throw ObjectHelper.wrapCamelExecutionException(exchange, e);
+                    }
+                }
+
                 Date date;
                 if ("now".equals(command)) {
                     date = new Date();
@@ -1720,13 +1938,27 @@ public final class ExpressionBuilder {
                     throw new IllegalArgumentException("Command not supported for dateExpression: " + command);
                 }
 
-                SimpleDateFormat df = new SimpleDateFormat(pattern);
-                return df.format(date);
+                // Apply offsets
+                long dateAsLong = date.getTime();
+                for (long offset : offsets) {
+                    dateAsLong += offset;
+                }
+                date = new Date(dateAsLong);
+
+                if (pattern != null && !pattern.isEmpty()) {
+                    SimpleDateFormat df = new SimpleDateFormat(pattern);
+                    if (timezone != null && !timezone.isEmpty()) {
+                        df.setTimeZone(TimeZone.getTimeZone(timezone));
+                    }
+                    return df.format(date);
+                } else {
+                    return date;
+                }
             }
 
             @Override
             public String toString() {
-                return "date(" + command + ":" + pattern + ")";
+                return "date(" + commandWithOffsets + ":" + pattern + ":" + timezone + ")";
             }
         };
     }
@@ -2027,7 +2259,7 @@ public final class ExpressionBuilder {
         return constantExpression(str);
     }
 
-    public static Expression propertiesComponentExpression(final String key, final String locations) {
+    public static Expression propertiesComponentExpression(final String key, final String locations, final String defaultValue) {
         return new ExpressionAdapter() {
             public Object evaluate(Exchange exchange) {
                 String text = simpleExpression(key).evaluate(exchange, String.class);
@@ -2055,6 +2287,10 @@ public final class ExpressionBuilder {
                         return pc.parseUri(pc.getPrefixToken() + text + pc.getSuffixToken());
                     }
                 } catch (Exception e) {
+                    // property with key not found, use default value if provided
+                    if (defaultValue != null) {
+                        return defaultValue;
+                    }
                     throw ObjectHelper.wrapRuntimeCamelException(e);
                 }
             }
@@ -2107,6 +2343,24 @@ public final class ExpressionBuilder {
             @Override
             public String toString() {
                 return "random";
+            }
+        };
+    }
+
+    /**
+     * Returns an iterator to skip (iterate) the given expression
+     */
+    public static Expression skipExpression(final String expression, final int number) {
+        return new ExpressionAdapter() {
+            public Object evaluate(Exchange exchange) {
+                // use simple language
+                Expression exp = exchange.getContext().resolveLanguage("simple").createExpression(expression);
+                return ExpressionBuilder.skipIteratorExpression(exp, number).evaluate(exchange, Object.class);
+            }
+
+            @Override
+            public String toString() {
+                return "skip(" + expression + "," + number + ")";
             }
         };
     }

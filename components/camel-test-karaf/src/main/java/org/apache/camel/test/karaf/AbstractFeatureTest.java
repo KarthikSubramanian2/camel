@@ -36,11 +36,9 @@ import org.apache.camel.CamelContext;
 import org.apache.camel.Component;
 import org.apache.camel.spi.DataFormat;
 import org.apache.camel.spi.Language;
-import org.apache.camel.test.AvailablePortFinder;
 import org.apache.karaf.features.FeaturesService;
 import org.junit.After;
 import org.junit.Before;
-import org.ops4j.pax.exam.Configuration;
 import org.ops4j.pax.exam.CoreOptions;
 import org.ops4j.pax.exam.Option;
 import org.ops4j.pax.exam.ProbeBuilder;
@@ -249,7 +247,7 @@ public abstract class AbstractFeatureTest {
         }
         if (karafVersion == null) {
             // setup the default version of it
-            karafVersion = "4.0.5";
+            karafVersion = "4.0.8";
         }
         return karafVersion;
     }
